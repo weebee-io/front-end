@@ -1,0 +1,40 @@
+# --- 기본 ---
+node_modules/              # 패키지
+.DS_Store                  # macOS 메타파일
+.idea/                     # JetBrains IDE
+.vscode/                   # VSCode 설정
+*.log                      # 로그 파일
+npm-debug.*                # npm 디버그 로그
+yarn-debug.*               # yarn 디버그 로그
+yarn-error.*               # yarn 오류 로그
+pnpm-debug.*               # pnpm 디버그 로그
+
+# --- Next.js ---
+.next/                     # 빌드 결과
+out/                       # `next export`
+.vercel/                   # Vercel 배포 설정
+.turbo/                    # Turborepo 캐시
+
+# --- 환경 변수 ---
+.env*                      # 모든 환경 변수 파일(.env, .env.local 등)
+
+# --- 테스트 & 커버리지 ---
+coverage/
+*.lcov
+
+# --- 빌드 도구/캐시 ---
+dist/
+.cache/
+*.tsbuildinfo
+
+# --- OS / 툴 특화 ---
+Thumbs.db                  # Windows
+__MACOSX/                  # macOS 압축 시 부가 폴더
+
+# --- 이미지 프리뷰/디자인 툴 ---
+*.sketch
+*.psd
+*.ai
+
+# --- 기타 ---
+# 이미 커밋된 파일을 무시할 땐 `git rm --cached <file>` 를 먼저 실행하세요
