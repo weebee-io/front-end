@@ -79,6 +79,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/")
   }
 
+  // 사용자 정보 가져오기 (랭크 확인용)
+  const fetchUserInfo = async () => {
+    try {
+      const response = await fetch("http://localhost:8080/users/getUserinfo", {
+        credentials: "include"
+      });
+
+      if (!response.ok) {
+        // 401, 403 등 에러 응답일 때
+        throw new Error(`서버 응답 에러: ${response.status}`);
+      }
+
+      const userInfo = await response.json();
+
+      if (userInfo.success) {
+        setUser(userInfo.data);
+      }
+    } catch (error) {
+      console.error("유저 정보 로딩 실패:", error);
+      // 에러 처리 UI 등 추가
+    }
+  }
+
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, loading, login, logout }}>{children}</AuthContext.Provider>
   )

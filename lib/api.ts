@@ -15,6 +15,7 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
 
   const response = await fetch(`${API_BASE_URL}${url}`, {
     ...options,
+    credentials: "include",
     headers,
   })
 
@@ -42,25 +43,37 @@ export async function getWeebeeImage() {
 }
 
 // 퀴즈 목록 가져오기
-export async function getQuizzes() {
-  // 이 함수는 예시입니다. 실제 API 엔드포인트에 맞게 수정해야 합니다.
-  // 서버에서 퀴즈 목록을 가져오는 API가 없어서 임시로 구현했습니다.
-  return fetchWithAuth("/quizzes")
+export async function getQuizzes(subject: string, level: number) {
+  // URL: /quiz/generation?subject=신용/소비&level=1
+return fetchWithAuth(
+  `/quiz/generation?subject=${encodeURIComponent(subject)}&level=${level}`
+)
+
 }
 
-// 사용자의 퀴즈 결과 가져오기
+// 퀴즈 정답 확인
+export async function checkQuizAnswer(quizId: number, answer: string) {
+  return fetchWithAuth(`/quiz/iscorrect/${quizId}/${answer}`)
+}
+
+// 사용자가 푼 퀴즈 결과 가져오기
 export async function getUserQuizResults() {
-  // 이 함수는 예시입니다. 실제 API 엔드포인트에 맞게 수정해야 합니다.
-  // 사용자 정보에서 퀴즈 결과를 추출할 수도 있습니다.
-  const userInfo = await getUserInfo()
-  return userInfo.success ? userInfo.data.quizResults : []
+  return fetchWithAuth("/quiz/checkResult")
 }
 
-// 퀴즈 답변 제출하기
-export async function submitQuizAnswer(quizId: number, answer: string) {
-  // 이 함수는 예시입니다. 실제 API 엔드포인트에 맞게 수정해야 합니다.
-  return fetchWithAuth("/quiz/submit", {
+// 퀴즈 업로드 (관리자용)
+export async function uploadQuizFile(file: File) {
+  const formData = new FormData()
+  formData.append("file", file)
+
+  const response = await fetch(`${API_BASE_URL}/quiz/admin/upload`, {
     method: "POST",
-    body: JSON.stringify({ quizId, answer }),
+    body: formData,
+    credentials: "include",
   })
+
+  if (!response.ok) {
+    throw new Error(`퀴즈 업로드 실패: ${response.status}`)
+  }
+  return response.text()
 }

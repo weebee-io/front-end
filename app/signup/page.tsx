@@ -19,7 +19,7 @@ export default function SignupPage() {
     name: "",
     gender: "",
     age: 0,
-    userRank: "BRONZE", // 기본값
+    userRank: "", // 기본값
   })
   const [error, setError] = useState("")
   const router = useRouter()

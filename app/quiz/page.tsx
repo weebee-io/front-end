@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth/AuthProvider"
-import { getQuizzes, submitQuizAnswer, getUserQuizResults } from "@/lib/api"
+import { getQuizzes, getUserQuizResults, checkQuizAnswer } from "@/lib/api"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -34,6 +34,9 @@ type QuizResult = {
   quizId: Quiz
 }
 
+// 과목 목록 예시
+const SUBJECTS = ["재태크", "신용소비", "금융상식"]
+
 export default function QuizPage() {
   const { isAuthenticated, loading } = useAuth()
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
@@ -43,6 +46,9 @@ export default function QuizPage() {
   const [loadingQuizzes, setLoadingQuizzes] = useState(false)
   const [userRank, setUserRank] = useState("BRONZE") // 기본값
   const [activeTab, setActiveTab] = useState("1") // 기본
+  const [userInfo, setUserInfo] = useState(null)
+  const [subject, setSubject] = useState(SUBJECTS[0])
+  const [level, setLevel] = useState(1)
 
   const [resultDialog, setResultDialog] = useState({
     open: false,
@@ -62,21 +68,34 @@ export default function QuizPage() {
     }
   }, [isAuthenticated, loading, router])
 
+  useEffect(() => {
+    // 사용자 정보 가져오기
+    fetch("http://localhost:8080/users/getUserinfo", {
+      method: "GET",
+      credentials: "include"
+    })
+      .then(res => {
+        if (!res.ok) throw new Error("유저 정보 불러오기 실패");
+        return res.json();
+      })
+      .then(data => {
+        setUserInfo(data)
+        if (data.success) {
+          setUserRank(data.data.userrank)
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        // 에러 처리
+      });
+  }, []);
+
   // 퀴즈 데이터 로드
   const loadQuizData = async () => {
     setLoadingQuizzes(true)
     try {
-      // 사용자 정보 가져오기 (랭크 확인용)
-      const userInfo = await fetch("http://localhost:8080/users/getUserinfo").then((res) => res.json())
-      if (userInfo.success) {
-        setUserRank(userInfo.data.userrank)
-      }
-
-      // 퀴즈 목록 가져오기
-      const quizData = await getQuizzes()
+      const quizData = await getQuizzes(subject, level)
       setQuizzes(quizData)
-
-      // 사용자의 퀴즈 결과 가져오기
       const resultsData = await getUserQuizResults()
       setQuizResults(resultsData)
     } catch (err) {
@@ -85,6 +104,13 @@ export default function QuizPage() {
       setLoadingQuizzes(false)
     }
   }
+
+  // subject, level이 바뀔 때마다 퀴즈 다시 로드
+  useEffect(() => {
+    if (isAuthenticated && !loading) {
+      loadQuizData()
+    }
+  }, [subject, level, isAuthenticated, loading])
 
   // 퀴즈 선택 처리
   const handleSelectQuiz = (quiz: Quiz) => {
@@ -97,7 +123,7 @@ export default function QuizPage() {
     if (!selectedQuiz || !answer) return
 
     try {
-      const result = await submitQuizAnswer(selectedQuiz.quizId, answer)
+      const result = await checkQuizAnswer(selectedQuiz.quizId, answer)
 
       // 결과 다이얼로그 표시
       setResultDialog({
@@ -139,7 +165,17 @@ export default function QuizPage() {
     <div className="max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">퀴즈 풀기</h1>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      {/* 과목 선택 드롭다운 */}
+      <div className="mb-4">
+        <label>과목 선택: </label>
+        <select value={subject} onChange={e => setSubject(e.target.value)}>
+          {SUBJECTS.map(subj => (
+            <option key={subj} value={subj}>{subj}</option>
+          ))}
+        </select>
+      </div>
+
+      <Tabs value={level.toString()} onValueChange={val => setLevel(Number(val))}>
         <TabsList className="mb-4">
           <TabsTrigger value="1">레벨 1</TabsTrigger>
           <TabsTrigger value="2" disabled={!canAccessLevel(2)}>
