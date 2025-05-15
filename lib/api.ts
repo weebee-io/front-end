@@ -1,4 +1,5 @@
 import Cookies from "js-cookie"
+import { QuizRank } from "./types"
 
 // API 기본 URL
 const API_BASE_URL = "http://localhost:8080"
@@ -42,18 +43,16 @@ export async function getWeebeeImage() {
   return response // 이미지 이름을 포함한 응답 객체 반환
 }
 
-// 퀴즈 목록 가져오기
-export async function getQuizzes(subject: string, level: number) {
-  // URL: /quiz/generation?subject=신용/소비&level=1
-return fetchWithAuth(
-  `/quiz/generation?subject=${encodeURIComponent(subject)}&level=${level}`
-)
-
+// 퀴즈 목록 가져오기 (subject, quiz_rank 쿼리 파라미터)
+export async function getQuizzes(subject: string, quiz_rank: QuizRank) {
+  return fetchWithAuth(
+    `/quiz/generation/${encodeURIComponent(subject)}/${quiz_rank}`
+  )
 }
 
-// 퀴즈 정답 확인
+// 퀴즈 정답 확인 (정답은 POST로 보내는 게 더 안전하지만, 현재 GET 방식 유지)
 export async function checkQuizAnswer(quizId: number, answer: string) {
-  return fetchWithAuth(`/quiz/iscorrect/${quizId}/${answer}`)
+  return fetchWithAuth(`/quiz/iscorrect/${quizId}/${encodeURIComponent(answer)}`)
 }
 
 // 사용자가 푼 퀴즈 결과 가져오기

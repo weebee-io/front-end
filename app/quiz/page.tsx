@@ -1,5 +1,6 @@
 "use client"
 
+import { QuizRank } from "@/lib/types"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth/AuthProvider"
@@ -18,12 +19,29 @@ import {
 import { CheckCircle, XCircle } from "lucide-react"
 
 // 퀴즈 타입
+type QuizOption2 = {
+  quizId: number
+  choiceA: string
+  choiceB: string
+  correctAns: string
+}
+type QuizOption4 = {
+  quizId: number
+  choiceA: string
+  choiceB: string
+  choiceC: string
+  choiceD: string
+  correctAns: string
+}
 type Quiz = {
   quizId: number
-  quizcontent: string
-  subject: string
+  quizContent: string
+  quizSubject: string
+  quizRank: string
   quizLevel: number
-  quizAnswer: string
+  option2: QuizOption2 | null
+  option4: QuizOption4 | null
+  correctAns: string
 }
 
 // 퀴즈 결과 타입
@@ -35,20 +53,20 @@ type QuizResult = {
 }
 
 // 과목 목록 예시
-const SUBJECTS = ["재태크", "신용소비", "금융상식"]
+const SUBJECTS = ["finance", "invest", "credit"]
 
 export default function QuizPage() {
   const { isAuthenticated, loading } = useAuth()
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [quizResults, setQuizResults] = useState<QuizResult[]>([])
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null)
-  const [answer, setAnswer] = useState("")
+  const [selectedAnswer, setSelectedAnswer] = useState<string>("")
   const [loadingQuizzes, setLoadingQuizzes] = useState(false)
   const [userRank, setUserRank] = useState("BRONZE") // 기본값
   const [activeTab, setActiveTab] = useState("1") // 기본
   const [userInfo, setUserInfo] = useState(null)
   const [subject, setSubject] = useState(SUBJECTS[0])
-  const [level, setLevel] = useState(1)
+  const [quiz_rank, setLevel] = useState(1)
 
   const [resultDialog, setResultDialog] = useState({
     open: false,
@@ -94,10 +112,14 @@ export default function QuizPage() {
   const loadQuizData = async () => {
     setLoadingQuizzes(true)
     try {
-      const quizData = await getQuizzes(subject, level)
-      setQuizzes(quizData)
-      const resultsData = await getUserQuizResults()
-      setQuizResults(resultsData)
+      const quizData = await getQuizzes(subject, userRank as QuizRank)
+      const rankMap = { 1: "BRONZE", 2: "SILVER", 3: "GOLD" } as const;
+      const filteredQuizzes = quizData.filter(
+        (quiz: Quiz) => quiz.quizRank === rankMap[quiz_rank as keyof typeof rankMap]
+      );
+      setQuizzes(filteredQuizzes)
+      //const resultsData = await getUserQuizResults()
+      //setQuizResults(resultsData)
     } catch (err) {
       console.error("퀴즈 데이터 로딩 실패:", err)
     } finally {
@@ -110,22 +132,19 @@ export default function QuizPage() {
     if (isAuthenticated && !loading) {
       loadQuizData()
     }
-  }, [subject, level, isAuthenticated, loading])
+  }, [subject, quiz_rank, isAuthenticated, loading])
 
   // 퀴즈 선택 처리
   const handleSelectQuiz = (quiz: Quiz) => {
     setSelectedQuiz(quiz)
-    setAnswer("")
+    setSelectedAnswer("")
   }
 
   // 퀴즈 답변 제출
   const handleSubmitAnswer = async () => {
-    if (!selectedQuiz || !answer) return
-
+    if (!selectedQuiz || !selectedAnswer) return
     try {
-      const result = await checkQuizAnswer(selectedQuiz.quizId, answer)
-
-      // 결과 다이얼로그 표시
+      const result = await checkQuizAnswer(selectedQuiz.quizId, selectedAnswer)
       setResultDialog({
         open: true,
         correct: result.isCorrect,
@@ -135,7 +154,11 @@ export default function QuizPage() {
       // 퀴즈 결과 업데이트
       await loadQuizData()
     } catch (err) {
-      console.error("퀴즈 답변 제출 실패:", err)
+      setResultDialog({
+        open: true,
+        correct: false,
+        message: "정답 제출 중 오류가 발생했습니다.",
+      })
     }
   }
 
@@ -173,9 +196,15 @@ export default function QuizPage() {
             <option key={subj} value={subj}>{subj}</option>
           ))}
         </select>
+        <label className="ml-4">레벨: </label>
+        <select value={quiz_rank} onChange={e => setLevel(Number(e.target.value))}>
+          {[1, 2, 3].map(lv => (
+            <option key={lv} value={lv}>{lv}</option>
+          ))}
+        </select>
       </div>
 
-      <Tabs value={level.toString()} onValueChange={val => setLevel(Number(val))}>
+      <Tabs value={quiz_rank.toString()} onValueChange={val => setLevel(Number(val))}>
         <TabsList className="mb-4">
           <TabsTrigger value="1">레벨 1</TabsTrigger>
           <TabsTrigger value="2" disabled={!canAccessLevel(2)}>
@@ -209,11 +238,11 @@ export default function QuizPage() {
                             ) : (
                               <XCircle className="text-red-500 h-5 w-5" />
                             ))}
-                          {quiz.subject}
+                          {quiz.quizContent}
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="truncate">{quiz.quizcontent}</p>
+                        <p className="truncate">{quiz.quizContent}</p>
                       </CardContent>
                     </Card>
                   )
@@ -227,27 +256,81 @@ export default function QuizPage() {
       {selectedQuiz && (
         <Card className="mt-8">
           <CardHeader>
-            <CardTitle>{selectedQuiz.subject}</CardTitle>
+            <CardTitle>{selectedQuiz.quizContent}</CardTitle>
             <CardDescription>레벨 {selectedQuiz.quizLevel} 퀴즈</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="mb-4">{selectedQuiz.quizcontent}</p>
+            <p className="mb-4">{selectedQuiz.quizContent}</p>
             <div className="space-y-2">
-              <label htmlFor="answer" className="block font-medium">
-                답변:
-              </label>
-              <textarea
-                id="answer"
-                className="w-full p-2 border rounded-md"
-                rows={3}
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                placeholder="답변을 입력하세요..."
-              />
+              {/* 2지선다 */}
+              {selectedQuiz.option2 && (
+                <div>
+                  <label htmlFor={`quiz-${selectedQuiz.quizId}-choiceA`} className="block font-medium">
+                    {selectedQuiz.option2.choiceA}
+                  </label>
+                  <input
+                    id={`quiz-${selectedQuiz.quizId}-choiceA`}
+                    type="radio"
+                    name={`quiz-${selectedQuiz.quizId}-choice`}
+                    value={selectedQuiz.option2.choiceA}
+                    checked={selectedAnswer === selectedQuiz.option2.choiceA}
+                    onChange={(e) => { handleSelectQuiz(selectedQuiz); setSelectedAnswer(e.target.value) }}
+                  />
+                </div>
+              )}
+              {/* 4지선다 */}
+              {selectedQuiz.option4 && (
+                <div>
+                  <label htmlFor={`quiz-${selectedQuiz.quizId}-choiceA`} className="block font-medium">
+                    {selectedQuiz.option4.choiceA}
+                  </label>
+                  <input
+                    id={`quiz-${selectedQuiz.quizId}-choiceA`}
+                    type="radio"
+                    name={`quiz-${selectedQuiz.quizId}-choice`}
+                    value={selectedQuiz.option4.choiceA}
+                    checked={selectedAnswer === selectedQuiz.option4.choiceA}
+                    onChange={(e) => { handleSelectQuiz(selectedQuiz); setSelectedAnswer(e.target.value) }}
+                  />
+                  <label htmlFor={`quiz-${selectedQuiz.quizId}-choiceB`} className="block font-medium ml-4">
+                    {selectedQuiz.option4.choiceB}
+                  </label>
+                  <input
+                    id={`quiz-${selectedQuiz.quizId}-choiceB`}
+                    type="radio"
+                    name={`quiz-${selectedQuiz.quizId}-choice`}
+                    value={selectedQuiz.option4.choiceB}
+                    checked={selectedAnswer === selectedQuiz.option4.choiceB}
+                    onChange={(e) => { handleSelectQuiz(selectedQuiz); setSelectedAnswer(e.target.value) }}
+                  />
+                  <label htmlFor={`quiz-${selectedQuiz.quizId}-choiceC`} className="block font-medium ml-4">
+                    {selectedQuiz.option4.choiceC}
+                  </label>
+                  <input
+                    id={`quiz-${selectedQuiz.quizId}-choiceC`}
+                    type="radio"
+                    name={`quiz-${selectedQuiz.quizId}-choice`}
+                    value={selectedQuiz.option4.choiceC}
+                    checked={selectedAnswer === selectedQuiz.option4.choiceC}
+                    onChange={(e) => { handleSelectQuiz(selectedQuiz); setSelectedAnswer(e.target.value) }}
+                  />
+                  <label htmlFor={`quiz-${selectedQuiz.quizId}-choiceD`} className="block font-medium ml-4">
+                    {selectedQuiz.option4.choiceD}
+                  </label>
+                  <input
+                    id={`quiz-${selectedQuiz.quizId}-choiceD`}
+                    type="radio"
+                    name={`quiz-${selectedQuiz.quizId}-choice`}
+                    value={selectedQuiz.option4.choiceD}
+                    checked={selectedAnswer === selectedQuiz.option4.choiceD}
+                    onChange={(e) => { handleSelectQuiz(selectedQuiz); setSelectedAnswer(e.target.value) }}
+                  />
+                </div>
+              )}
             </div>
           </CardContent>
           <CardFooter>
-            <Button onClick={handleSubmitAnswer} disabled={!answer}>
+            <Button onClick={handleSubmitAnswer} disabled={!selectedAnswer}>
               제출하기
             </Button>
           </CardFooter>
@@ -255,14 +338,14 @@ export default function QuizPage() {
       )}
 
       {/* 결과 다이얼로그 */}
-      <Dialog open={resultDialog.open} onOpenChange={(open) => setResultDialog((prev) => ({ ...prev, open }))}>
+      <Dialog open={resultDialog.open} onOpenChange={open => setResultDialog(prev => ({ ...prev, open }))}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{resultDialog.correct ? "정답입니다!" : "오답입니다"}</DialogTitle>
-            <DialogDescription>{resultDialog.message}</DialogDescription>
+            <DialogTitle>{resultDialog.correct ? "정답입니다!" : "오답입니다."}</DialogTitle>
           </DialogHeader>
+          <div>{resultDialog.message}</div>
           <DialogFooter>
-            <Button onClick={() => setResultDialog((prev) => ({ ...prev, open: false }))}>확인</Button>
+            <Button onClick={() => setResultDialog(prev => ({ ...prev, open: false }))}>확인</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
