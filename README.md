@@ -31,8 +31,10 @@ weebee-frontend/
 
 | 이름   | 역할                 | GitHub |
 |--------|----------------------|--------|
-| 박혁준 | 프런트엔드 · API 연동| [@hyukjunmon](https://github.com/hyukjunmon) |
+| 김정수 | 프런트엔드 · API 연동 | [@kimjeongsoo20190147](https://github.com/kimjeongsoo20190147) |
+| 박혁준 | 프런트엔드 · API 연동 | [@hyukjunmon](https://github.com/hyukjunmon) |
 | 오세현 | 데이터 시각화        | [@MoominHunter](https://github.com/MoominHunter) |
+
 
 ---
 
