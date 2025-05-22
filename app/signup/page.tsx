@@ -2,6 +2,8 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Cookies from "js-cookie"
+import { useAuth } from "@/components/auth/AuthProvider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { BasicInfoForm } from "@/components/auth/BasicInfoForm"
@@ -23,11 +25,12 @@ export default function SignupPage() {
   })
   const [error, setError] = useState("")
   const router = useRouter()
+  const { login } = useAuth();
 
   // 기본 정보 제출 처리
   const handleBasicInfoSubmit = async (data: typeof basicInfo) => {
     try {
-      const response = await fetch("http://localhost:8080/users/signup", {
+      const response = await fetch("http://localhost:8085/users/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -38,9 +41,14 @@ export default function SignupPage() {
       const result = await response.json()
 
       if (result.success) {
-        // 기본 정보 저장 및 다음 단계로 이동
-        setBasicInfo(data)
-        setStep("survey")
+        // 회원가입 성공 시 바로 로그인 처리
+        const loginResult = await login(data.id, data.password);
+        if (loginResult.success) {
+          setBasicInfo(data)
+          setStep("survey")
+        } else {
+          setError("회원가입은 성공했으나 자동 로그인에 실패했습니다: " + loginResult.message)
+        }
       } else {
         setError(result.message || "회원가입 중 오류가 발생했습니다.")
       }
@@ -52,24 +60,62 @@ export default function SignupPage() {
   // 설문조사 제출 처리
   const handleSurveySubmit = async (surveyData: any) => {
     try {
-      const response = await fetch("http://localhost:8080/surveys", {
-        method: "POST",
+      const token = Cookies.get("jwt_token");
+
+      // 1. 회원 스텟 초기화
+      const initStatsRes = await fetch("http://localhost:8085/stats/statsInit", {
+        method: "GET",
+        credentials: 'include',
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+      });
+      const initStatsResult = await initStatsRes.json();
+      if (!initStatsResult.success) {
+        setError(initStatsResult.message || "회원 스텟 초기화 중 오류가 발생했습니다.");
+        return;
+      }
+
+      // 2. 설문조사 제출
+      const response = await fetch("http://localhost:8085/surveys", {
+        method: "POST",
+        credentials: 'include',
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify(surveyData),
       })
-
-      const result = await response.json()
-
-      if (result.success) {
-        // 회원가입 완료 후 로그인 페이지로 이동
-        router.push("/login?signup=success")
-      } else {
-        setError(result.message || "설문조사 제출 중 오류가 발생했습니다.")
+      console.log(response)
+      console.log(JSON.stringify(surveyData))
+      const responseResult = await response.json();
+      if (!responseResult.success) {
+        setError(responseResult.message || "설문조사 제출 중 오류가 발생했습니다.")
+        return;
       }
+
+
+      // 3. ML 클러스터링 API 호출
+      const mlRes = await fetch("http://localhost:8085/ml/clusteringwithKafka", {
+        method: "GET",
+        credentials: 'include',
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        //body: JSON.stringify(surveyData),
+      });
+      const mlResult = await mlRes.json();
+      if (!mlResult.success) {
+        setError(mlResult.message || "ML 클러스터링 중 오류가 발생했습니다.");
+        return;
+      }
+
+      // 모든 과정 성공 시 완료 페이지로 이동
+      router.push("/login?signup=success");
     } catch (err) {
-      setError("서버 연결 중 오류가 발생했습니다.")
+      setError("서버 연결 중 오류가 발생했습니다."+err);
     }
   }
 

@@ -3,7 +3,7 @@
 import Cookies from "js-cookie"
 import { QuizRank } from "./types"
 
-const API_BASE_URL = "http://localhost:8080"
+const API_BASE_URL = "http://localhost:8085"
 
 /**
  * 인증이 필요한 모든 요청을 보낼 때 사용하는 헬퍼

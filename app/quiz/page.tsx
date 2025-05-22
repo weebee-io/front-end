@@ -78,7 +78,7 @@ export default function QuizPage() {
     setLoadingQuizzes(true)
     try {
       // 1) 유저 랭크
-      const ui = await fetch("http://localhost:8080/users/getUserinfo", {
+      const ui = await fetch("http://localhost:8085/users/getUserinfo", {
         credentials: "include",
       }).then(r => r.json())
       if (ui.success) setUserRank(ui.data.userrank)

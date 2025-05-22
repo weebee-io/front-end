@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // 로그인 함수
   const login = async (id: string, password: string) => {
     try {
-      const response = await fetch("http://localhost:8080/users/login", {
+      const response = await fetch("http://localhost:8085/users/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

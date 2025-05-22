@@ -12,14 +12,14 @@ import { Progress } from "@/components/ui/progress"
 
 // 설문조사 데이터 타입
 type SurveyData = {
-  assetType: number
-  investResource: number
-  creditScore: number
-  delinquentCount: number
-  debtRatio: number
-  consumptionScore: number
-  digitalFriendly: number
-  finKnowScore: number
+  risk_profile_score: number
+  complex_product_flag: number
+  is_married: number
+  essential_pct: number
+  discretionary_pct: number
+  sav_inv_ratio: number
+  spend_volatility: number
+  digital_engagement: number
 }
 
 // 소비 습관 질문
@@ -171,14 +171,14 @@ export function SurveyForm({ onSubmit }: SurveyFormProps) {
 
   // 설문 응답 데이터
   const [surveyData, setSurveyData] = useState<SurveyData>({
-    assetType: 0,
-    investResource: 0,
-    creditScore: 0,
-    delinquentCount: 0,
-    debtRatio: 0,
-    consumptionScore: 0,
-    digitalFriendly: 0,
-    finKnowScore: 0,
+    risk_profile_score: 0,
+    complex_product_flag: 0,
+    is_married: 0,
+    essential_pct: 0,
+    discretionary_pct: 0,
+    sav_inv_ratio: 0,
+    spend_volatility: 0,
+    digital_engagement: 0,
   })
 
   // 소비 습관 응답
@@ -222,7 +222,7 @@ export function SurveyForm({ onSubmit }: SurveyFormProps) {
       const consumptionTotal = Object.values(consumptionAnswers).reduce((sum, score) => sum + score, 0)
       setSurveyData((prev) => ({
         ...prev,
-        consumptionScore: consumptionTotal,
+        essential_pct: consumptionTotal,
       }))
       setStep(2)
     }
@@ -238,17 +238,8 @@ export function SurveyForm({ onSubmit }: SurveyFormProps) {
     e.preventDefault()
     setLoading(true)
 
-    // 금융 지식 점수 계산
-    const finKnowTotal = Object.values(finKnowAnswers).reduce((sum, score) => sum + score, 0)
 
-    // 최종 데이터 준비
-    const finalData = {
-      ...surveyData,
-      finKnowScore: finKnowTotal,
-    }
-
-    onSubmit(finalData)
-    setLoading(false)
+    onSubmit(surveyData)
   }
 
   // 진행 상태 계산
@@ -262,94 +253,126 @@ export function SurveyForm({ onSubmit }: SurveyFormProps) {
         {/* 자산 및 신용 정보 단계 */}
         {step === 0 && (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">자산 및 신용 정보</h3>
+            <h3 className="text-lg font-medium">기본 정보</h3>
 
             <div className="space-y-2">
-              <Label htmlFor="assetType">자산 유형 (0-5)</Label>
+              <Label htmlFor="risk_profile_score">본인의 투자 위험 성향 (1~10)</Label>
               <Input
-                id="assetType"
-                name="assetType"
+                id="risk_profile_score"
+                name="risk_profile_score"
                 type="number"
-                min="0"
-                max="5"
-                value={surveyData.assetType || ""}
+                min="1"
+                max="10"
+                value={surveyData.risk_profile_score || ""}
                 onChange={handleInputChange}
                 required
-                placeholder="자산 유형을 입력하세요"
+                placeholder="1(매우 안정) ~ 10(매우 공격)"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="investResource">투자 자원 (0-5)</Label>
-              <Input
-                id="investResource"
-                name="investResource"
-                type="number"
-                min="0"
-                max="5"
-                value={surveyData.investResource || ""}
-                onChange={handleInputChange}
-                required
-                placeholder="투자 자원을 입력하세요"
-              />
+              <Label htmlFor="complex_product_flag">복합 금융상품(ELS, DLS 등) 보유 여부</Label>
+              <RadioGroup
+                value={surveyData.complex_product_flag?.toString() || ""}
+                onValueChange={(value) => setSurveyData(prev => ({ ...prev, complex_product_flag: Number(value) }))}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="1" id="complex_product_yes" />
+                  <Label htmlFor="complex_product_yes">예</Label>
+                  <RadioGroupItem value="0" id="complex_product_no" />
+                  <Label htmlFor="complex_product_no">아니오</Label>
+                </div>
+              </RadioGroup>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="creditScore">신용 점수 (0-1000)</Label>
-              <Input
-                id="creditScore"
-                name="creditScore"
-                type="number"
-                min="0"
-                max="1000"
-                value={surveyData.creditScore || ""}
-                onChange={handleInputChange}
-                required
-                placeholder="신용 점수를 입력하세요"
-              />
+              <Label htmlFor="is_married">결혼 여부</Label>
+              <RadioGroup
+                value={surveyData.is_married?.toString() || ""}
+                onValueChange={(value) => setSurveyData(prev => ({ ...prev, is_married: Number(value) }))}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="1" id="married_yes" />
+                  <Label htmlFor="married_yes">예</Label>
+                  <RadioGroupItem value="0" id="married_no" />
+                  <Label htmlFor="married_no">아니오</Label>
+                </div>
+              </RadioGroup>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="delinquentCount">연체 횟수</Label>
+              <Label htmlFor="essential_pct">월 소득 중 필수 소비 비율 (%)</Label>
               <Input
-                id="delinquentCount"
-                name="delinquentCount"
-                type="number"
-                min="0"
-                value={surveyData.delinquentCount || ""}
-                onChange={handleInputChange}
-                required
-                placeholder="연체 횟수를 입력하세요"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="debtRatio">부채 비율 (%)</Label>
-              <Input
-                id="debtRatio"
-                name="debtRatio"
+                id="essential_pct"
+                name="essential_pct"
                 type="number"
                 min="0"
                 max="100"
-                value={surveyData.debtRatio || ""}
+                value={surveyData.essential_pct || ""}
                 onChange={handleInputChange}
                 required
-                placeholder="부채 비율을 입력하세요"
+                placeholder="예: 50"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="digitalFriendly">디지털 친화도 (0-5)</Label>
+              <Label htmlFor="discretionary_pct">월 소득 중 재량 소비 비율 (%)</Label>
               <Input
-                id="digitalFriendly"
-                name="digitalFriendly"
+                id="discretionary_pct"
+                name="discretionary_pct"
                 type="number"
                 min="0"
-                max="5"
-                value={surveyData.digitalFriendly || ""}
+                max="100"
+                value={surveyData.discretionary_pct || ""}
                 onChange={handleInputChange}
                 required
-                placeholder="디지털 친화도를 입력하세요"
+                placeholder="예: 30"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="digital_engagement">디지털 금융 서비스 사용 빈도 (1~5)</Label>
+              <Input
+                id="digital_engagement"
+                name="digital_engagement"
+                type="number"
+                min="1"
+                max="5"
+                value={surveyData.digital_engagement || ""}
+                onChange={handleInputChange}
+                required
+                placeholder="1(전혀 안함) ~ 5(매우 자주)"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="spend_volatility">월별 소비 변동성 (0~1)</Label>
+              <Input
+                id="spend_volatility"
+                name="spend_volatility"
+                type="number"
+                min="0"
+                max="1"
+                step="0.01"
+                value={surveyData.spend_volatility || ""}
+                onChange={handleInputChange}
+                required
+                placeholder="예: 0.2"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="sav_inv_ratio">저축 대비 투자 비율 (%)</Label>
+              <Input
+                id="sav_inv_ratio"
+                name="sav_inv_ratio"
+                type="number"
+                min="0"
+                max="100"
+                value={surveyData.sav_inv_ratio || ""}
+                onChange={handleInputChange}
+                required
+                placeholder="예: 40"
               />
             </div>
 
