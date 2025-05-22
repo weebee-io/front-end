@@ -94,3 +94,31 @@ export async function getLeaderboard(
 ) {
   return fetchWithAuth(`/leaderboard?page=${page}&size=${size}`)
 }
+
+/** 퀴즈 시작 로깅 */
+export async function logQuizStart(quizId: number, startTime: Date) {
+  try {
+    const response = await fetchWithAuth(`/quiz/log/start/${quizId}`, {
+      method: 'POST',
+      body: JSON.stringify({ startTime })
+    });
+    return response;
+  } catch (error: any) {
+    console.error('퀴즈 시작 로깅 실패:', error);
+    return { success: false, error: error.message || '알 수 없는 오류가 발생했습니다.' };
+  }
+}
+
+/** 퀴즈 종료 로깅 */
+export async function logQuizEnd(quizId: number, endTime: Date, isCompleted: boolean) {
+  try {
+    const response = await fetchWithAuth(`/quiz/log/end/${quizId}`, {
+      method: 'POST',
+      body: JSON.stringify({ isCompleted })
+    });
+    return response;
+  } catch (error: any) {
+    console.error('퀴즈 종료 로깅 실패:', error);
+    return { success: false, error: error.message || '알 수 없는 오류가 발생했습니다.' };
+  }
+}

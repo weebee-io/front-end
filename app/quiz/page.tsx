@@ -8,6 +8,8 @@ import {
   getQuizzes,
   getUserQuizResults,
   checkQuizAnswer,
+  logQuizStart,
+  logQuizEnd,
 } from "@/lib/api"
 import {
   Card,
@@ -41,6 +43,7 @@ type Quiz = {
   option2: QuizOption2 | null
   option4: QuizOption4 | null
   correctAns: string
+  isExpanded?: boolean
 }
 
 const SUBJECTS = ["finance", "invest", "credit"]
@@ -51,6 +54,7 @@ export default function QuizPage() {
   const [userRank, setUserRank] = useState<QuizRank>(QuizRank.BRONZE)
   const [subject, setSubject] = useState<string>(SUBJECTS[0])
   const [loadingQuizzes, setLoadingQuizzes] = useState(false)
+  const [quizStartTimes, setQuizStartTimes] = useState<{[key: number]: Date}>({})
 
   // 사용자가 선택한 답
   const [answers, setAnswers] = useState<{ [id: number]: string }>({})
@@ -101,6 +105,53 @@ export default function QuizPage() {
     }
   }
 
+  // 퀴즈 시작 로깅
+  const handleQuizStart = async (quizId: number) => {
+    try {
+      const response = await logQuizStart(quizId, new Date());
+      if (!response.success) {
+        console.error('퀴즈 시작 로깅 실패:', response.error);
+      }
+    } catch (e) {
+      console.error('퀴즈 시작 로깅 실패:', e);
+    }
+  }
+
+  // 퀴즈 종료 로깅
+  const handleQuizEnd = async (quizId: number, isCompleted: boolean) => {
+    try {
+      const response = await logQuizEnd(quizId, new Date(), isCompleted);
+      if (!response.success) {
+        console.error('퀴즈 종료 로깅 실패:', response.error);
+      }
+    } catch (e) {
+      console.error('퀴즈 종료 로깅 실패:', e);
+    }
+  }
+
+  // 퀴즈 펼침/접기 핸들러
+  const toggleQuiz = async (quiz: Quiz) => {
+    const newQuizzes = quizzes.map(q => {
+      if (q.quizId === quiz.quizId) {
+        const newIsExpanded = !q.isExpanded;
+        if (newIsExpanded) {
+          // 퀴즈를 펼칠 때 시작 시간 기록
+          setQuizStartTimes(prev => ({
+            ...prev,
+            [quiz.quizId]: new Date()
+          }));
+          handleQuizStart(quiz.quizId);
+        } else {
+          // 퀴즈를 접을 때 종료 로그 기록
+          handleQuizEnd(quiz.quizId, completed.has(quiz.quizId));
+        }
+        return { ...q, isExpanded: newIsExpanded };
+      }
+      return q;
+    });
+    setQuizzes(newQuizzes);
+  }
+
   // 제출 핸들러
   const submitAnswer = async (quizId: number) => {
     const ans = answers[quizId]
@@ -113,8 +164,9 @@ export default function QuizPage() {
         [quizId]: { correct: res.isCorrect, message: res.message },
       }))
       if (res.isCorrect) {
-        // 정답일 때만 completed에 추가
         setCompleted(prev => new Set(prev).add(quizId))
+        // 정답 제출 시 종료 로그 기록
+        handleQuizEnd(quizId, true)
       }
     } catch (e) {
       setResults(prev => ({
@@ -154,11 +206,12 @@ export default function QuizPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6">
-        {quizzes.map(quiz => {
+      {/* 퀴즈 목록 */}
+      <div className="space-y-4">
+        {quizzes.map((quiz, index) => {
           const isDone = completed.has(quiz.quizId)
           return (
-            <Card key={quiz.quizId} className="border">
+            <Card key={`${quiz.quizId}-${index}`} className="border">
               <CardHeader className="flex justify-between items-center">
                 <CardTitle>{quiz.quizContent}</CardTitle>
                 {isDone && (
@@ -166,88 +219,107 @@ export default function QuizPage() {
                 )}
               </CardHeader>
 
-              <CardContent>
-                {/* 2지선다 */}
-                {quiz.option2 && (
-                  <div className="space-y-2">
-                    <label className="block">
-                      <input
-                        type="radio"
-                        name={`answer-${quiz.quizId}`}
-                        value="1"
-                        disabled={isDone}
-                        checked={answers[quiz.quizId] === "1"}
-                        onChange={() =>
-                          setAnswers(a => ({ ...a, [quiz.quizId]: "1" }))
-                        }
-                        className="mr-2"
-                      />
-                      {quiz.option2.choiceA}
-                    </label>
-                    <label className="block">
-                      <input
-                        type="radio"
-                        name={`answer-${quiz.quizId}`}
-                        value="2"
-                        disabled={isDone}
-                        checked={answers[quiz.quizId] === "2"}
-                        onChange={() =>
-                          setAnswers(a => ({ ...a, [quiz.quizId]: "2" }))
-                        }
-                        className="mr-2"
-                      />
-                      {quiz.option2.choiceB}
-                    </label>
-                  </div>
-                )}
+              {!quiz.isExpanded ? (
+                <CardFooter>
+                  <Button
+                    onClick={() => toggleQuiz(quiz)}
+                    className="w-full"
+                  >
+                    문제 풀기
+                  </Button>
+                </CardFooter>
+              ) : (
+                <>
+                  <CardContent>
+                    {/* 2지선다 */}
+                    {quiz.option2 && (
+                      <div className="space-y-2">
+                        <label className="block">
+                          <input
+                            type="radio"
+                            name={`answer-${quiz.quizId}`}
+                            value="1"
+                            disabled={isDone}
+                            checked={answers[quiz.quizId] === "1"}
+                            onChange={() =>
+                              setAnswers(a => ({ ...a, [quiz.quizId]: "1" }))
+                            }
+                            className="mr-2"
+                          />
+                          {quiz.option2.choiceA}
+                        </label>
+                        <label className="block">
+                          <input
+                            type="radio"
+                            name={`answer-${quiz.quizId}`}
+                            value="2"
+                            disabled={isDone}
+                            checked={answers[quiz.quizId] === "2"}
+                            onChange={() =>
+                              setAnswers(a => ({ ...a, [quiz.quizId]: "2" }))
+                            }
+                            className="mr-2"
+                          />
+                          {quiz.option2.choiceB}
+                        </label>
+                      </div>
+                    )}
 
-                {/* 4지선다 */}
-                {quiz.option4 && (
-                  <div className="space-y-2">
-                    {[quiz.option4.choiceA,
-                      quiz.option4.choiceB,
-                      quiz.option4.choiceC,
-                      quiz.option4.choiceD
-                    ].map((txt, idx) => (
-                      <label key={idx} className="block">
-                        <input
-                          type="radio"
-                          name={`answer-${quiz.quizId}`}
-                          value={`${idx+1}`}
-                          disabled={isDone}
-                          checked={answers[quiz.quizId] === `${idx+1}`}
-                          onChange={() =>
-                            setAnswers(a => ({ ...a, [quiz.quizId]: `${idx+1}` }))
-                          }
-                          className="mr-2"
-                        />
-                        {txt}
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
+                    {/* 4지선다 */}
+                    {quiz.option4 && (
+                      <div className="space-y-2">
+                        {[quiz.option4.choiceA,
+                          quiz.option4.choiceB,
+                          quiz.option4.choiceC,
+                          quiz.option4.choiceD
+                        ].map((txt, idx) => (
+                          <label key={idx} className="block">
+                            <input
+                              type="radio"
+                              name={`answer-${quiz.quizId}`}
+                              value={`${idx+1}`}
+                              disabled={isDone}
+                              checked={answers[quiz.quizId] === `${idx+1}`}
+                              onChange={() =>
+                                setAnswers(a => ({ ...a, [quiz.quizId]: `${idx+1}` }))
+                              }
+                              className="mr-2"
+                            />
+                            {txt}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
 
-              <CardFooter className="flex flex-col items-start">
-                <Button
-                  onClick={() => submitAnswer(quiz.quizId)}
-                  // 정답 완료된 문제만 비활성화
-                  disabled={isDone || !answers[quiz.quizId]}
-                >
-                  {isDone ? "제출 완료" : "제출하기"}
-                </Button>
+                  <CardFooter className="flex gap-2">
+                    <Button
+                      onClick={() => submitAnswer(quiz.quizId)}
+                      disabled={isDone || !answers[quiz.quizId]}
+                      className="flex-1"
+                    >
+                      {isDone ? "제출 완료" : "제출하기"}
+                    </Button>
+                    <Button
+                      onClick={() => toggleQuiz(quiz)}
+                      variant="outline"
+                    >
+                      닫기
+                    </Button>
+                  </CardFooter>
 
-                {/* 제출 결과 메시지 */}
-                {results[quiz.quizId] && (
-                  <p className={`mt-2 ${
-                    results[quiz.quizId].correct
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}>
-                    {results[quiz.quizId].message}
-                  </p>
-                )}
-              </CardFooter>
+                  {/* 제출 결과 메시지 */}
+                  {results[quiz.quizId] && (
+                    <p className={`px-6 pb-4 ${
+                      results[quiz.quizId].correct
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}>
+                      {results[quiz.quizId].message}
+                    </p>
+                  )}
+                </>
+              )}
             </Card>
           )
         })}
