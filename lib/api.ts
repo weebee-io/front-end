@@ -4,6 +4,8 @@ import Cookies from "js-cookie"
 import { QuizRank } from "./types"
 
 const API_BASE_URL = "http://localhost:8085"
+//const CHAT_API_URL = "https://team1chat.ap.loclx.io"
+const CHAT_API_URL = "http://localhost:8005"
 
 /**
  * 인증이 필요한 모든 요청을 보낼 때 사용하는 헬퍼
@@ -121,4 +123,24 @@ export async function logQuizEnd(quizId: number, endTime: Date, isCompleted: boo
     console.error('퀴즈 종료 로깅 실패:', error);
     return { success: false, error: error.message || '알 수 없는 오류가 발생했습니다.' };
   }
+}
+
+// 채팅 메시지 전송하기
+export async function sendChatMessage(question: string) {
+  const token = Cookies.get("jwt_token")
+
+  const response = await fetch(`${CHAT_API_URL}/chat/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ question }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`채팅 API 요청 실패: ${response.status}`)
+  }
+
+  return response.json()
 }

@@ -186,6 +186,13 @@ export function SurveyForm({ onSubmit }: SurveyFormProps) {
 
   // 금융 지식 응답
   const [finKnowAnswers, setFinKnowAnswers] = useState<Record<string, number>>({})
+  
+  // 스탷 계산을 위한 상태 추가
+  const [stats, setStats] = useState({
+    investStat: 0,
+    creditStat: 0,
+    fiStat: 0
+  })
 
   // 입력 필드 변경 처리
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -206,10 +213,51 @@ export function SurveyForm({ onSubmit }: SurveyFormProps) {
 
   // 금융 지식 응답 처리
   const handleFinKnowAnswer = (questionId: string, value: number) => {
-    setFinKnowAnswers((prev) => ({
-      ...prev,
-      [questionId]: value,
-    }))
+    setFinKnowAnswers((prev) => {
+      const updated = {
+        ...prev,
+        [questionId]: value,
+      };
+      
+      // 응답 변경 시 스탷 계산 업데이트
+      calculateStats(updated);
+      
+      return updated;
+    });
+  }
+  
+  // 스탷 계산 함수
+  const calculateStats = (answers: Record<string, number>) => {
+    let newInvestStat = 0;
+    let newCreditStat = 0;
+    let newFiStat = 0;
+    
+    // finknow1~3: fiStat에 영향
+    for (let i = 1; i <= 3; i++) {
+      const answer = answers[`finknow${i}`];
+      if (answer === 0) newFiStat -= 10;
+      else if (answer === 1) newFiStat += 10;
+    }
+    
+    // finknow4~6: investStat에 영향
+    for (let i = 4; i <= 6; i++) {
+      const answer = answers[`finknow${i}`];
+      if (answer === 0) newInvestStat -= 10;
+      else if (answer === 1) newInvestStat += 10;
+    }
+    
+    // finknow7~10: creditStat에 영향
+    for (let i = 7; i <= 10; i++) {
+      const answer = answers[`finknow${i}`];
+      if (answer === 0) newCreditStat -= 10;
+      else if (answer === 1) newCreditStat += 10;
+    }
+    
+    setStats({
+      investStat: newInvestStat,
+      creditStat: newCreditStat,
+      fiStat: newFiStat
+    });
   }
 
   // 다음 단계로 이동
@@ -234,12 +282,45 @@ export function SurveyForm({ onSubmit }: SurveyFormProps) {
   }
 
   // 설문 제출
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-
-
-    onSubmit(surveyData)
+    
+    try {
+      // 금융 지식 점수 계산
+      const finKnowTotal = Object.values(finKnowAnswers).reduce((sum, score) => sum + score, 0);
+      
+      // 최종 설문 데이터 준비
+      const finalSurveyData = {
+        ...surveyData,
+        risk_profile_score: Number(surveyData.risk_profile_score) || 5,
+        complex_product_flag: Number(surveyData.complex_product_flag) || 0,
+        is_married: Number(surveyData.is_married) || 0,
+        essential_pct: Number(surveyData.essential_pct) || 0,
+        discretionary_pct: Number(surveyData.discretionary_pct) || 0,
+        sav_inv_ratio: Number(surveyData.sav_inv_ratio) || 0,
+        spend_volatility: Number(surveyData.spend_volatility) || 0,
+        digital_engagement: Number(surveyData.digital_engagement) || 0,
+        finance_knowledge_score: finKnowTotal,
+        // 계산된 스탷 정보 추가
+        stats: {
+          investStat: stats.investStat,
+          creditStat: stats.creditStat,
+          fiStat: stats.fiStat
+        }
+      };
+      
+      console.log('제출할 설문 데이터:', finalSurveyData);
+      console.log('계산된 스탷 정보:', stats);
+      
+      // 부모 컴포넌트의 onSubmit 함수 호출
+      await onSubmit(finalSurveyData);
+    } catch (error) {
+      console.error('설문 제출 중 오류:', error);
+    } finally {
+      // 성공 또는 실패와 관계없이 로딩 상태 해제
+      setLoading(false);
+    }
   }
 
   // 진행 상태 계산
