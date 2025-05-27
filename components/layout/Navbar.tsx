@@ -42,6 +42,9 @@ export default function Navbar() {
             <Link href="/quiz" className="px-3 py-2 rounded-md hover:bg-gray-100">
               퀴즈 풀기
             </Link>
+            <Link href="/news" className="px-3 py-2 rounded-md hover:bg-gray-100">
+              뉴스
+            </Link>
 
             {/* 로그인/로그아웃 버튼 */}
             {isAuthenticated ? (

@@ -65,6 +65,14 @@ export default function QuizPage() {
   // **정답으로 제출 완료된** 문제 ID 집합
   const [completed, setCompleted] = useState<Set<number>>(new Set())
 
+  // 결과 모달 관련 상태
+  const [showResultModal, setShowResultModal] = useState(false)
+  const [currentResult, setCurrentResult] = useState<{
+    quizId: number,
+    correct: boolean,
+    message: string
+  } | null>(null)
+
   const router = useRouter()
 
   useEffect(() => {
@@ -159,20 +167,39 @@ export default function QuizPage() {
 
     try {
       const res = await checkQuizAnswer(quizId, ans)
+      // 결과 저장
       setResults(prev => ({
         ...prev,
         [quizId]: { correct: res.isCorrect, message: res.message },
       }))
+      
+      // 모달 표시를 위한 현재 결과 설정
+      setCurrentResult({
+        quizId,
+        correct: res.isCorrect,
+        message: res.message
+      })
+      setShowResultModal(true)
+      
       if (res.isCorrect) {
         setCompleted(prev => new Set(prev).add(quizId))
         // 정답 제출 시 종료 로그 기록
         handleQuizEnd(quizId, true)
       }
     } catch (e) {
+      // 오류 결과 저장
       setResults(prev => ({
         ...prev,
         [quizId]: { correct: false, message: "제출 오류 발생" },
       }))
+      
+      // 오류 모달 표시
+      setCurrentResult({
+        quizId,
+        correct: false,
+        message: "제출 오류 발생"
+      })
+      setShowResultModal(true)
     }
   }
 
@@ -308,8 +335,8 @@ export default function QuizPage() {
                     </Button>
                   </CardFooter>
 
-                  {/* 제출 결과 메시지 */}
-                  {results[quiz.quizId] && (
+                  {/* 제출 결과 메세지 - 모달로 대체했으니 주석 처리 */}
+                  {/* {results[quiz.quizId] && (
                     <p className={`px-6 pb-4 ${
                       results[quiz.quizId].correct
                         ? "text-green-600"
@@ -317,13 +344,52 @@ export default function QuizPage() {
                     }`}>
                       {results[quiz.quizId].message}
                     </p>
-                  )}
+                  )} */}
                 </>
               )}
             </Card>
           )
         })}
       </div>
+      {/* 결과 모달 */}
+      {showResultModal && currentResult && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full shadow-lg transform transition-all">
+            <div className="text-center">
+              {currentResult.correct ? (
+                <>
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-green-600 mb-2">정답입니다!</h3>
+                  <p className="text-gray-600 mb-2">{currentResult.message}</p>
+                  <p className="text-lg font-bold text-green-600">+10점</p>
+                </>
+              ) : (
+                <>
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-red-600 mb-2">오답입니다!</h3>
+                  <p className="text-gray-600">{currentResult.message}</p>
+                  <p className="text-lg font-bold text-red-600">-10점</p>
+                </>
+              )}
+              
+              <button 
+                onClick={() => setShowResultModal(false)}
+                className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

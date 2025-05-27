@@ -144,3 +144,19 @@ export async function sendChatMessage(question: string) {
 
   return response.json()
 }
+
+
+/** 뉴스 목록 조회 */
+export async function getNews(page = 0, size = 10) {
+  return fetchWithAuth(`/news?page=${page}&size=${size}`)
+}
+
+/** 특정 뉴스 조회 */
+export async function getNewsById(newsId: number) {
+  return fetchWithAuth(`/news/${newsId}`)
+}
+
+/** 뉴스 퀴즈 정답 확인 */
+export async function checkNewsQuizAnswer(quizId: number, answer: string) {
+  return fetchWithAuth(`/newsQuiz/iscorrect/${quizId}/${answer}`)
+}
