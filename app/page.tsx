@@ -7,6 +7,8 @@ import { getUserInfo, getWeebeeImage, getLeaderboard } from "@/lib/api"
 import { Quote } from "@/components/home/Quote"
 import { RecentQuiz } from "@/components/home/RecentQuiz"
 import type { LeaderboardDto, Page } from "@/lib/types"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 export default function Home() {
   const { isAuthenticated, user, loading } = useAuth()
@@ -53,8 +55,42 @@ export default function Home() {
   return (
     <div className="flex flex-col items-center">
       {!isAuthenticated ? (
-        <div className="text-center py-20">
-          <h1 className="text-3xl font-bold mb-10">빈 공간</h1>
+        <div className="flex flex-col md:flex-row items-center justify-between w-full max-w-6xl py-12 px-4">
+          {/* 왼쪽: 이미지 영역 */}
+          <div className="w-full md:w-1/2 mb-8 md:mb-0">
+            <div className="relative w-full h-[400px]">
+              <Image 
+                src="/images/characters/webe.jpg" 
+                alt="캐릭터 이미지"
+                fill
+                className="object-contain pixelated"
+              />
+            </div>
+          </div>
+          
+          {/* 오른쪽: 텍스트와 버튼 영역 */}
+          <div className="w-full md:w-1/2 text-center md:text-left px-4">
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 text-black">
+              AI를 활용한 손쉬운 금융 공부!
+            </h1>
+            <p className="text-xl mb-8 text-gray-700">
+              재미있고 효과적인 방식으로 금융 지식을 배워보세요. 퀴즈와 함께 실력을 키우고 랭킹에 도전하세요!
+            </p>
+            
+            <div className="flex flex-col space-y-4 max-w-xs mx-auto md:mx-0">
+              <Link href="/signup" className="w-full">
+                <Button className="w-full py-6 text-lg rounded-none bg-green-500 hover:bg-green-600 text-white border-2 border-black pixel-shadow">
+                  시작하기
+                </Button>
+              </Link>
+              
+              <Link href="/login" className="w-full">
+                <Button variant="outline" className="w-full py-6 text-lg rounded-none bg-white border-2 border-black pixel-shadow hover:bg-gray-100">
+                  계정이 이미 있습니다
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="w-full max-w-6xl">
@@ -73,7 +109,7 @@ export default function Home() {
                         alt="캐릭터 이미지"
                         width={200}
                         height={200}
-                        className="object-contain"
+                        className="object-contain pixelated"
                         onError={(e) => {
                           e.currentTarget.src = "/placeholder.svg?height=200&width=200"
                         }}

@@ -15,6 +15,8 @@ type UserStats = {
     investStat: number
     creditStat: number
     fiStat: number
+    newsStat: number
+    luckStat: number
     statSum: number
     weebeeImageName: string
   }
@@ -57,24 +59,24 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">내 정보</h1>
+      <h1 className="text-3xl font-bold mb-8 text-black border-b-4 border-black pb-2 inline-block pixel-shadow">내 정보</h1>
 
       {userStats ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* 캐릭터 이미지 */}
-          <Card>
+          <Card className="pixel-border bg-white overflow-hidden">
             <CardHeader>
               <CardTitle>내 캐릭터</CardTitle>
             </CardHeader>
             <CardContent className="flex justify-center">
-              <div className="border-2 border-gray-300 rounded-lg h-64 w-64 flex items-center justify-center">
+              <div className="border-2 border-black pixel-shadow bg-white h-64 w-64 flex items-center justify-center">
                 {userStats.stats.weebeeImageName ? (
                   <Image
                     src={`/images/characters/${userStats.stats.weebeeImageName}.png`}
                     alt="캐릭터 이미지"
                     width={200}
                     height={200}
-                    className="object-contain"
+                    className="object-contain pixelated"
                   />
                 ) : (
                   <p className="text-gray-500">캐릭터 이미지가 없습니다</p>
@@ -84,7 +86,7 @@ export default function ProfilePage() {
           </Card>
 
           {/* 랭크 및 스탯 정보 */}
-          <Card>
+          <Card className="pixel-border bg-white overflow-hidden">
             <CardHeader>
               <CardTitle>내 랭크 및 스탯</CardTitle>
             </CardHeader>
@@ -111,6 +113,14 @@ export default function ProfilePage() {
                       <p className="text-xl font-semibold">{userStats.stats.fiStat}</p>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-md">
+                      <p className="text-sm text-gray-500">뉴스 스탯</p>
+                      <p className="text-xl font-semibold">{userStats.stats.newsStat || 0}</p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-md">
+                      <p className="text-sm text-gray-500">운 스탯</p>
+                      <p className="text-xl font-semibold">{userStats.stats.luckStat || 0}</p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-md">
                       <p className="text-sm text-gray-500">총합</p>
                       <p className="text-xl font-semibold">{userStats.stats.statSum}</p>
                     </div>
@@ -121,7 +131,7 @@ export default function ProfilePage() {
           </Card>
 
           {/* 스탯 차트 */}
-          <Card className="md:col-span-2">
+          <Card className="md:col-span-2 pixel-border bg-white overflow-hidden">
             <CardHeader>
               <CardTitle>스탯 차트</CardTitle>
             </CardHeader>

@@ -62,100 +62,100 @@ const finKnowQuestions = [
     id: "finknow1",
     question: "복리 이자란 무엇인가요?",
     options: [
-      { value: 0, label: "원금에만 이자가 붙는 것" },
-      { value: 1, label: "원금과 이자에 이자가 붙는 것" },
-      { value: 0, label: "이자에만 이자가 붙는 것" },
-      { value: 0, label: "잘 모르겠음" },
+      { value: "a", label: "원금에만 이자가 붙는 것", isCorrect: false },
+      { value: "b", label: "원금과 이자에 이자가 붙는 것", isCorrect: true },
+      { value: "c", label: "이자에만 이자가 붙는 것", isCorrect: false },
+      { value: "d", label: "잘 모르겠음", isCorrect: false },
     ],
   },
   {
     id: "finknow2",
     question: "인플레이션이 높을 때 돈의 가치는 어떻게 되나요?",
     options: [
-      { value: 0, label: "증가한다" },
-      { value: 1, label: "감소한다" },
-      { value: 0, label: "변화 없다" },
-      { value: 0, label: "잘 모르겠음" },
+      { value: "a", label: "증가한다", isCorrect: false },
+      { value: "b", label: "감소한다", isCorrect: true },
+      { value: "c", label: "변화 없다", isCorrect: false },
+      { value: "d", label: "잘 모르겠음", isCorrect: false },
     ],
   },
   {
     id: "finknow3",
     question: "주식과 채권 중 일반적으로 더 위험한 투자는?",
     options: [
-      { value: 1, label: "주식" },
-      { value: 0, label: "채권" },
-      { value: 0, label: "둘 다 동일함" },
-      { value: 0, label: "잘 모르겠음" },
+      { value: "a", label: "주식", isCorrect: true },
+      { value: "b", label: "채권", isCorrect: false },
+      { value: "c", label: "둘 다 동일함", isCorrect: false },
+      { value: "d", label: "잘 모르겠음", isCorrect: false },
     ],
   },
   {
     id: "finknow4",
     question: "분산 투자의 주요 목적은 무엇인가요?",
     options: [
-      { value: 0, label: "수익 극대화" },
-      { value: 1, label: "위험 감소" },
-      { value: 0, label: "세금 절감" },
-      { value: 0, label: "잘 모르겠음" },
+      { value: "a", label: "수익 극대화", isCorrect: false },
+      { value: "b", label: "위험 감소", isCorrect: true },
+      { value: "c", label: "세금 절감", isCorrect: false },
+      { value: "d", label: "잘 모르겠음", isCorrect: false },
     ],
   },
   {
     id: "finknow5",
     question: "ETF는 무엇의 약자인가요?",
     options: [
-      { value: 0, label: "Electronic Trading Fund" },
-      { value: 0, label: "Extra Tax Freedom" },
-      { value: 1, label: "Exchange Traded Fund" },
-      { value: 0, label: "잘 모르겠음" },
+      { value: "a", label: "Electronic Trading Fund", isCorrect: false },
+      { value: "b", label: "Extra Tax Freedom", isCorrect: false },
+      { value: "c", label: "Exchange Traded Fund", isCorrect: true },
+      { value: "d", label: "잘 모르겠음", isCorrect: false },
     ],
   },
   {
     id: "finknow6",
     question: "신용점수에 가장 큰 영향을 미치는 요소는?",
     options: [
-      { value: 0, label: "소득 수준" },
-      { value: 1, label: "상환 이력" },
-      { value: 0, label: "보유 계좌 수" },
-      { value: 0, label: "잘 모르겠음" },
+      { value: "a", label: "소득 수준", isCorrect: false },
+      { value: "b", label: "상환 이력", isCorrect: true },
+      { value: "c", label: "보유 계좌 수", isCorrect: false },
+      { value: "d", label: "잘 모르겠음", isCorrect: false },
     ],
   },
   {
     id: "finknow7",
     question: "연금과 적금의 주요 차이점은?",
     options: [
-      { value: 0, label: "이자율의 차이" },
-      { value: 0, label: "가입 기간의 차이" },
-      { value: 1, label: "목적과 세제 혜택의 차이" },
-      { value: 0, label: "잘 모르겠음" },
+      { value: "a", label: "이자율의 차이", isCorrect: false },
+      { value: "b", label: "가입 기간의 차이", isCorrect: false },
+      { value: "c", label: "목적과 세제 혜택의 차이", isCorrect: true },
+      { value: "d", label: "잘 모르겠음", isCorrect: false },
     ],
   },
   {
     id: "finknow8",
     question: "주택담보대출의 LTV란?",
     options: [
-      { value: 1, label: "대출금액/주택가격 비율" },
-      { value: 0, label: "월 상환액/소득 비율" },
-      { value: 0, label: "대출 이자율" },
-      { value: 0, label: "잘 모르겠음" },
+      { value: "a", label: "대출금액/주택가격 비율", isCorrect: true },
+      { value: "b", label: "월 상환액/소득 비율", isCorrect: false },
+      { value: "c", label: "대출 이자율", isCorrect: false },
+      { value: "d", label: "잘 모르겠음", isCorrect: false },
     ],
   },
   {
     id: "finknow9",
     question: "다음 중 세금 공제 항목이 아닌 것은?",
     options: [
-      { value: 0, label: "의료비" },
-      { value: 0, label: "교육비" },
-      { value: 1, label: "여행 경비" },
-      { value: 0, label: "기부금" },
+      { value: "a", label: "의료비", isCorrect: false },
+      { value: "b", label: "교육비", isCorrect: false },
+      { value: "c", label: "여행 경비", isCorrect: true },
+      { value: "d", label: "기부금", isCorrect: false },
     ],
   },
   {
     id: "finknow10",
     question: "퇴직연금 중 확정급여형(DB)과 확정기여형(DC)의 차이는?",
     options: [
-      { value: 0, label: "가입 대상의 차이" },
-      { value: 1, label: "급여 산정 방식의 차이" },
-      { value: 0, label: "운용 기관의 차이" },
-      { value: 0, label: "잘 모르겠음" },
+      { value: "a", label: "가입 대상의 차이", isCorrect: false },
+      { value: "b", label: "급여 산정 방식의 차이", isCorrect: true },
+      { value: "c", label: "운용 기관의 차이", isCorrect: false },
+      { value: "d", label: "잘 모르겠음", isCorrect: false },
     ],
   },
 ]
@@ -185,7 +185,7 @@ export function SurveyForm({ onSubmit }: SurveyFormProps) {
   const [consumptionAnswers, setConsumptionAnswers] = useState<Record<string, number>>({})
 
   // 금융 지식 응답
-  const [finKnowAnswers, setFinKnowAnswers] = useState<Record<string, number>>({})
+  const [finKnowAnswers, setFinKnowAnswers] = useState<Record<string, string>>({})
   
   // 스탷 계산을 위한 상태 추가
   const [stats, setStats] = useState({
@@ -212,7 +212,7 @@ export function SurveyForm({ onSubmit }: SurveyFormProps) {
   }
 
   // 금융 지식 응답 처리
-  const handleFinKnowAnswer = (questionId: string, value: number) => {
+  const handleFinKnowAnswer = (questionId: string, value: string) => {
     setFinKnowAnswers((prev) => {
       const updated = {
         ...prev,
@@ -227,30 +227,65 @@ export function SurveyForm({ onSubmit }: SurveyFormProps) {
   }
   
   // 스탷 계산 함수
-  const calculateStats = (answers: Record<string, number>) => {
+  const calculateStats = (answers: Record<string, string>) => {
     let newInvestStat = 0;
     let newCreditStat = 0;
     let newFiStat = 0;
     
     // finknow1~3: fiStat에 영향
     for (let i = 1; i <= 3; i++) {
-      const answer = answers[`finknow${i}`];
-      if (answer === 0) newFiStat -= 10;
-      else if (answer === 1) newFiStat += 10;
+      const questionId = `finknow${i}`;
+      const selectedValue = answers[questionId];
+      if (!selectedValue) continue;
+      
+      // 해당 질문 찾기
+      const question = finKnowQuestions.find(q => q.id === questionId);
+      if (!question) continue;
+      
+      // 선택한 옵션 찾기
+      const selectedOption = question.options.find(opt => opt.value === selectedValue);
+      
+      if (selectedOption?.isCorrect) {
+        newFiStat += 10; // 정답
+      } else {
+        newFiStat -= 10; // 오답
+      }
     }
     
     // finknow4~6: investStat에 영향
     for (let i = 4; i <= 6; i++) {
-      const answer = answers[`finknow${i}`];
-      if (answer === 0) newInvestStat -= 10;
-      else if (answer === 1) newInvestStat += 10;
+      const questionId = `finknow${i}`;
+      const selectedValue = answers[questionId];
+      if (!selectedValue) continue;
+      
+      const question = finKnowQuestions.find(q => q.id === questionId);
+      if (!question) continue;
+      
+      const selectedOption = question.options.find(opt => opt.value === selectedValue);
+      
+      if (selectedOption?.isCorrect) {
+        newInvestStat += 10; // 정답
+      } else {
+        newInvestStat -= 10; // 오답
+      }
     }
     
     // finknow7~10: creditStat에 영향
     for (let i = 7; i <= 10; i++) {
-      const answer = answers[`finknow${i}`];
-      if (answer === 0) newCreditStat -= 10;
-      else if (answer === 1) newCreditStat += 10;
+      const questionId = `finknow${i}`;
+      const selectedValue = answers[questionId];
+      if (!selectedValue) continue;
+      
+      const question = finKnowQuestions.find(q => q.id === questionId);
+      if (!question) continue;
+      
+      const selectedOption = question.options.find(opt => opt.value === selectedValue);
+      
+      if (selectedOption?.isCorrect) {
+        newCreditStat += 10; // 정답
+      } else {
+        newCreditStat -= 10; // 오답
+      }
     }
     
     setStats({
@@ -287,8 +322,18 @@ export function SurveyForm({ onSubmit }: SurveyFormProps) {
     setLoading(true)
     
     try {
-      // 금융 지식 점수 계산
-      const finKnowTotal = Object.values(finKnowAnswers).reduce((sum, score) => sum + score, 0);
+      // 금융 지식 점수 계산 - 정답 개수 세기
+      const finKnowTotal = Object.entries(finKnowAnswers).reduce((sum, [questionId, selectedValue]) => {
+        // 해당 질문 찾기
+        const question = finKnowQuestions.find(q => q.id === questionId);
+        if (!question) return sum;
+        
+        // 선택한 옵션 찾기
+        const selectedOption = question.options.find(opt => opt.value === selectedValue);
+        
+        // 정답이면 +1
+        return sum + (selectedOption?.isCorrect ? 1 : 0);
+      }, 0);
       
       // 최종 설문 데이터 준비
       const finalSurveyData = {
@@ -511,8 +556,8 @@ export function SurveyForm({ onSubmit }: SurveyFormProps) {
               <Card key={q.id} className="p-4">
                 <p className="font-medium mb-3">{q.question}</p>
                 <RadioGroup
-                  value={finKnowAnswers[q.id]?.toString()}
-                  onValueChange={(value) => handleFinKnowAnswer(q.id, Number.parseInt(value))}
+                  value={finKnowAnswers[q.id]}
+                  onValueChange={(value) => handleFinKnowAnswer(q.id, value)}
                 >
                   <div className="space-y-2">
                     {q.options.map((option, idx) => (

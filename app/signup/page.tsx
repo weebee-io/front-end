@@ -48,6 +48,26 @@ export default function SignupPage() {
       if (result.success) {
         const loginResult = await login(data.id, data.password);
         if (loginResult.success) {
+          // 로그인 성공 후 스탯 초기화 API 호출
+          try {
+            const token = Cookies.get("jwt_token");
+            const statsInitResponse = await fetch("http://localhost:8085/stats/statsInit", {
+              method: "GET",
+              headers: {
+                "Authorization": `Bearer ${token}`
+              }
+            });
+            
+            if (statsInitResponse.ok) {
+              console.log('스탯 초기화 성공');
+            } else {
+              console.warn('스탯 초기화 실패, 상태코드:', statsInitResponse.status);
+            }
+          } catch (statsError) {
+            console.error('스탯 초기화 중 오류:', statsError);
+            // 스탯 초기화 실패해도 계속 진행
+          }
+          
           setBasicInfo(data)
           setStep("survey")
         } else {
@@ -166,6 +186,21 @@ export default function SignupPage() {
         return;
       }
       console.log('퀴즈 배치 테스트 응답:', quizPlacementResult.data);
+      
+      // 스탯 정보 확인 및 필요시 초기화
+      console.log('스탯 정보 확인 중...');
+      const statsCheckResult = await callApi("http://localhost:8085/stats/getuserstats", "GET");
+      
+      if (!statsCheckResult.success) {
+        // 스탯이 없는 경우 초기화 시도
+        console.log('스탯 정보 없음, 다시 초기화 시도');
+        const statsInitResult = await callApi("http://localhost:8085/stats/statsInit", "GET");
+        if (!statsInitResult.success) {
+          console.warn('스탯 초기화 실패:', statsInitResult.error);
+        } else {
+          console.log('스탯 초기화 성공');
+        }
+      }
       
       // 4. getUserStats API 호출하여 사용자 랭크 정보 가져오기
       console.log('getUserStats API 호출 시작...');
