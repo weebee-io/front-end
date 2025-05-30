@@ -19,6 +19,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import ReactConfetti from 'react-confetti'
+import { useWindowSize } from 'react-use'
 
 type QuizOption2 = {
   quizId: number
@@ -47,6 +49,11 @@ type Quiz = {
 }
 
 const SUBJECTS = ["finance", "invest", "credit"]
+const SUBJECT_NAMES: {[key: string]: string} = {
+  "finance": "금융상식",
+  "invest": "재테크",
+  "credit": "신용소비"
+}
 
 export default function QuizPage() {
   const { isAuthenticated, loading } = useAuth()
@@ -55,6 +62,14 @@ export default function QuizPage() {
   const [subject, setSubject] = useState<string>(SUBJECTS[0])
   const [loadingQuizzes, setLoadingQuizzes] = useState(false)
   const [quizStartTimes, setQuizStartTimes] = useState<{[key: number]: Date}>({})
+  
+  // 랭크 승급 관련 상태
+  const [prevRank, setPrevRank] = useState<string | null>(null)
+  const [showRankUpModal, setShowRankUpModal] = useState(false)
+  const [newRank, setNewRank] = useState<string>("") 
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [rankUpdateInitialized, setRankUpdateInitialized] = useState<boolean>(false)
+  const { width, height } = useWindowSize()
 
   // 사용자가 선택한 답
   const [answers, setAnswers] = useState<{ [id: number]: string }>({})
@@ -84,6 +99,45 @@ export default function QuizPage() {
       }
     }
   }, [isAuthenticated, loading, subject])
+  
+  // 초기 사용자 정보 불러오기
+  useEffect(() => {
+    // 비로그인 상태면 로그인 페이지로 이동
+    if (!loading && !isAuthenticated) {
+      router.push("/login")
+      return
+    }
+
+    // 사용자 정보만 먼저 불러오기 (퀴즈는 다른 useEffect에서 불러옵니다)
+    loadUserInfo()
+  }, [isAuthenticated, loading])
+
+  // 초기 사용자 정보 불러오기 - 승급 초기화
+  const loadUserInfo = async () => {
+    try {
+      const userInfo = await fetch("http://localhost:8085/users/getUserinfo", {
+        credentials: "include",
+      }).then(r => r.json())
+      
+      if (userInfo.success) {
+        const currentRank = userInfo.data.userrank
+        // 초기 값 설정
+        setPrevRank(currentRank)
+        setUserRank(currentRank)
+        setRankUpdateInitialized(true)
+        console.log('초기 랜크 설정:', currentRank)
+      }
+    } catch (error) {
+      console.error('사용자 정보 가져오기 실패:', error)
+    }
+  }
+
+  // 처음 로드 시 현재 랭크 저장
+  useEffect(() => {
+    if (userRank && !prevRank) {
+      setPrevRank(userRank)
+    }
+  }, [userRank, prevRank])
 
   // 전체 로딩: 유저정보, 퀴즈, 푼 목록
   async function loadAll() {
@@ -185,6 +239,38 @@ export default function QuizPage() {
         setCompleted(prev => new Set(prev).add(quizId))
         // 정답 제출 시 종료 로그 기록
         handleQuizEnd(quizId, true)
+        
+        // 퀴즈 제출 후 사용자 정보를 다시 가져와서 랭크 변경 확인
+        try {
+          const userInfo = await fetch("http://localhost:8085/users/getUserinfo", {
+            credentials: "include",
+          }).then(r => r.json())
+          
+          if (userInfo.success) {
+            const currentRank = userInfo.data.userrank
+            
+            // 초기화가 완료되었을 때만 승급 감지 로직 실행
+            if (rankUpdateInitialized && prevRank && prevRank !== currentRank) {
+              console.log(`랜크 승급 감지: ${prevRank} -> ${currentRank}`)
+              setNewRank(currentRank)
+              setShowConfetti(true)
+              setShowRankUpModal(true)
+              
+              // 5초 후에 폭죽 효과 중단
+              setTimeout(() => {
+                setShowConfetti(false)
+              }, 5000)
+              
+              // 승급 후 즉시 새 랜크로 업데이트
+              setPrevRank(currentRank)
+            }
+            
+            // 현재 랜크 저장
+            setUserRank(currentRank)
+          }
+        } catch (error) {
+          console.error('랭크 정보 가져오기 실패:', error)
+        }
       }
     } catch (e) {
       // 오류 결과 저장
@@ -221,7 +307,7 @@ export default function QuizPage() {
           onChange={e => setSubject(e.target.value)}
         >
           {SUBJECTS.map(s => (
-            <option key={s} value={s}>{s}</option>
+            <option key={s} value={s}>{SUBJECT_NAMES[s]}</option>
           ))}
         </select>
       </div>
@@ -387,6 +473,40 @@ export default function QuizPage() {
                 확인
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      
+      {/* 랭크 승급 모달 */}
+      {showRankUpModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          {showConfetti && (
+            <ReactConfetti
+              width={width}
+              height={height}
+              recycle={false}
+              numberOfPieces={500}
+              gravity={0.2}
+              colors={['#FFD700', '#FFA500', '#FF4500', '#32CD32', '#1E90FF', '#8A2BE2']}
+            />
+          )}
+          <div className="bg-white rounded-lg p-8 max-w-md w-full shadow-lg transform transition-all text-center z-10">
+            <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-12 h-12 text-yellow-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">축하합니다!</h2>
+            <div className="mb-6">
+              <p className="text-lg text-gray-600 mb-2">랭크가 승급되었습니다!</p>
+              <p className="text-xl font-bold text-emerald-600">{newRank}</p>
+            </div>
+            <button 
+              onClick={() => setShowRankUpModal(false)}
+              className="px-6 py-3 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors font-medium"
+            >
+              확인
+            </button>
           </div>
         </div>
       )}

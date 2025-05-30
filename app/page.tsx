@@ -55,12 +55,19 @@ export default function Home() {
   return (
     <div className="flex flex-col items-center">
       {!isAuthenticated ? (
-        <div className="flex flex-col md:flex-row items-center justify-between w-full max-w-6xl py-12 px-4">
-          {/* 왼쪽: 이미지 영역 */}
-          <div className="w-full md:w-1/2 mb-8 md:mb-0">
-            <div className="relative w-full h-[400px]">
+        <>
+          {/* 상단에 우리FISA 추가 */}
+          <div className="w-full bg-white py-4 mb-6">
+            <div className="max-w-6xl mx-auto px-4">
+              <h1 className="text-3xl font-bold text-black">우리FISA</h1>
+            </div>
+          </div>
+        <div className="flex flex-col items-center w-full max-w-6xl py-12 px-4">
+          {/* 상단: 이미지 영역 */}
+          <div className="w-full mb-12 flex justify-center">
+            <div className="relative w-full max-w-md h-[300px]">
               <Image 
-                src="/images/characters/webe.jpg" 
+                src="/images/characters/weebeefriends2.png" 
                 alt="캐릭터 이미지"
                 fill
                 className="object-contain pixelated"
@@ -68,8 +75,8 @@ export default function Home() {
             </div>
           </div>
           
-          {/* 오른쪽: 텍스트와 버튼 영역 */}
-          <div className="w-full md:w-1/2 text-center md:text-left px-4">
+          {/* 하단: 텍스트와 버튼 영역 */}
+          <div className="w-full max-w-2xl text-center px-4">
             <h1 className="text-4xl md:text-5xl font-bold mb-6 text-black">
               AI를 활용한 손쉬운 금융 공부!
             </h1>
@@ -77,21 +84,22 @@ export default function Home() {
               재미있고 효과적인 방식으로 금융 지식을 배워보세요. 퀴즈와 함께 실력을 키우고 랭킹에 도전하세요!
             </p>
             
-            <div className="flex flex-col space-y-4 max-w-xs mx-auto md:mx-0">
+            <div className="flex flex-col space-y-4 max-w-xs mx-auto">
               <Link href="/signup" className="w-full">
-                <Button className="w-full py-6 text-lg rounded-none bg-green-500 hover:bg-green-600 text-white border-2 border-black pixel-shadow">
+                <button className="w-full py-4 text-lg rounded-xl bg-green-500 hover:bg-green-600 text-white transition-colors duration-200 shadow-md">
                   시작하기
-                </Button>
+                </button>
               </Link>
               
               <Link href="/login" className="w-full">
-                <Button variant="outline" className="w-full py-6 text-lg rounded-none bg-white border-2 border-black pixel-shadow hover:bg-gray-100">
+                <button className="w-full py-4 text-lg rounded-xl bg-white hover:bg-gray-100 text-blue-500 border border-gray-200 transition-colors duration-200 shadow-sm">
                   계정이 이미 있습니다
-                </Button>
+                </button>
               </Link>
             </div>
           </div>
         </div>
+        </>
       ) : (
         <div className="w-full max-w-6xl">
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -101,7 +109,7 @@ export default function Home() {
                 <h2 className="text-2xl font-bold mb-4">
                   {userInfo?.nickname || "사용자"} 님
                 </h2>
-                <div className="border-2 border-gray-300 rounded-lg h-64 w-full flex items-center justify-center">
+                <div className="rounded-lg h-64 w-full flex items-center justify-center">
                   {userInfo?.weebeeImageName ? (
                     <div className="relative h-full w-full">
                       <Image
@@ -109,11 +117,12 @@ export default function Home() {
                         alt="캐릭터 이미지"
                         width={200}
                         height={200}
-                        className="object-contain pixelated"
+                        className="object-contain pixelated object-center mx-auto"
                         onError={(e) => {
                           e.currentTarget.src = "/placeholder.svg?height=200&width=200"
                         }}
                       />
+                      <p className="text-xs text-gray-500 mt-2 text-center w-full">금융 스텟에 따라 캐릭터가 바뀝니다!</p>
                     </div>
                   ) : (
                     <p className="text-gray-500">캐릭터 이미지가 없습니다</p>

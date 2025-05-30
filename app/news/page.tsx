@@ -16,6 +16,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import ReactConfetti from 'react-confetti'
+import { useWindowSize } from 'react-use'
 
 // 뉴스 타입 정의
 type News = {
@@ -61,6 +63,13 @@ export default function NewsPage() {
   const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   
+  // 랭크 승급 관련 상태
+  const [prevRank, setPrevRank] = useState<string | null>(null)
+  const [showRankUpModal, setShowRankUpModal] = useState(false)
+  const [newRank, setNewRank] = useState<string>("") 
+  const [showConfetti, setShowConfetti] = useState(false)
+  const { width, height } = useWindowSize()
+  
   // 사용자가 선택한 답
   const [answers, setAnswers] = useState<{ [id: number]: string }>({})
   
@@ -76,8 +85,10 @@ export default function NewsPage() {
     points?: number
   } | null>(null)
   
-  // AI 해설 표시 상태
+  // AI 해설 관련 상태
   const [showAiExplanation, setShowAiExplanation] = useState<number | null>(null)
+  const [aiExplanations, setAiExplanations] = useState<{[key: number]: string}>({})
+  const [loadingAiExplanation, setLoadingAiExplanation] = useState<boolean>(false)
 
   const router = useRouter()
 
@@ -87,9 +98,25 @@ export default function NewsPage() {
         router.push("/")
       } else {
         loadNews()
+        loadUserRank()
       }
     }
   }, [isAuthenticated, loading, currentPage])
+  
+  // 사용자 랭크 정보 로드
+  const loadUserRank = async () => {
+    try {
+      const userInfo = await fetch("http://localhost:8085/users/getUserinfo", {
+        credentials: "include",
+      }).then(r => r.json())
+      
+      if (userInfo.success) {
+        setPrevRank(userInfo.data.userrank)
+      }
+    } catch (error) {
+      console.error('사용자 랭크 정보 로드 실패:', error)
+    }
+  }
 
   // 뉴스 로딩
   async function loadNews() {
@@ -143,11 +170,67 @@ export default function NewsPage() {
   }
   
   // AI 해설 토글
-  const toggleAiExplanation = (newsId: number) => {
+  const toggleAiExplanation = async (newsId: number) => {
     if (showAiExplanation === newsId) {
+      // 이미 열려있으면 닫기만 함
       setShowAiExplanation(null)
-    } else {
-      setShowAiExplanation(newsId)
+      return
+    }
+    
+    setShowAiExplanation(newsId)
+    
+    // 이미 가져온 해설이 있는지 확인
+    if (aiExplanations[newsId]) {
+      return // 이미 데이터가 있으면 재요청 안함
+    }
+    
+    // 현재 선택된 뉴스 찾기
+    const newsItem = news.find(item => item.newsId === newsId)
+    if (!newsItem) return
+    
+    try {
+      setLoadingAiExplanation(true)
+      
+      // API 요청 데이터 준비 - 명확하게 description만 사용
+      const requestData = {
+        content: newsItem.description // 해당 기사의 description 필드만 사용
+      }
+      
+      // description이 없는 경우에 대한 처리
+      if (!newsItem.description || newsItem.description.trim() === '') {
+        throw new Error('뉴스 내용이 없어 AI 해설을 생성할 수 없습니다.')
+      }
+      
+      // AI 해설 API 호출
+      const response = await fetch('http://43.202.154.216:8000/api/ai/news', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+      })
+      
+      if (!response.ok) {
+        throw new Error('AI 해설을 가져오는데 실패했습니다.')
+      }
+      
+      const data = await response.json()
+      
+      // 응답 데이터 처리
+      setAiExplanations(prev => ({
+        ...prev,
+        [newsId]: data.summary || data.explanation || '내용을 분석할 수 없습니다.'
+      }))
+      
+    } catch (error) {
+      console.error('AI 해설 요청 오류:', error)
+      // 에러 메시지 표시
+      setAiExplanations(prev => ({
+        ...prev,
+        [newsId]: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+      }))
+    } finally {
+      setLoadingAiExplanation(false)
     }
   }
 
@@ -169,13 +252,54 @@ export default function NewsPage() {
       
       if (result.isCorrect) {
         setCompleted(prev => new Set(prev).add(quizId))
+        
+        // 퀴즈 제출 후 사용자 정보를 다시 가져와서 랭크 변경 확인
+        try {
+          const userInfo = await fetch("http://localhost:8085/users/getUserinfo", {
+            credentials: "include",
+          }).then(r => r.json())
+          
+          if (userInfo.success) {
+            const currentRank = userInfo.data.userrank
+            
+            // 이전 랭크가 있고, 현재 랭크와 다르다면 승급한 것
+            if (prevRank && prevRank !== currentRank) {
+              console.log(`랭크 승급 감지: ${prevRank} -> ${currentRank}`)
+              setNewRank(currentRank)
+              setShowConfetti(true)
+              setShowRankUpModal(true)
+              
+              // 5초 후에 폭죽 효과 중단
+              setTimeout(() => {
+                setShowConfetti(false)
+              }, 5000)
+            }
+            
+            // 현재 랭크 저장
+            setPrevRank(currentRank)
+          }
+        } catch (error) {
+          console.error('랭크 정보 가져오기 실패:', error)
+        }
       }
-    } catch (e) {
+    } catch (e: any) {
+      console.error('뉴스 퀴즈 제출 오류:', e)
+      
+      // 뉴스 스탯 초기화되지 않은 경우 처리
+      let errorMessage = "제출 오류가 발생했습니다."
+      
+      // 서버에서 반환된 오류 메시지 확인
+      if (e.message && e.message.includes('500')) {
+        errorMessage = "뉴스 스탯이 초기화되지 않았습니다. 프로필에서 확인해주세요."
+      } else if (e.message) {
+        errorMessage = e.message
+      }
+      
       // 오류 모달 표시
       setCurrentResult({
         quizId,
         correct: false,
-        message: "제출 오류가 발생했습니다."
+        message: errorMessage
       })
       setShowResultModal(true)
     }
@@ -265,9 +389,19 @@ export default function NewsPage() {
                     {showAiExplanation === newsItem.newsId && (
                       <div className="mt-4 p-4 bg-blue-50 rounded-md">
                         <h3 className="font-semibold mb-2">AI 해설</h3>
-                        <p className="text-gray-600">
-                          현재 AI 해설 기능은 개발 중입니다. 곧 제공될 예정입니다.
-                        </p>
+                        {loadingAiExplanation ? (
+                          <div className="flex justify-center items-center h-20">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                          </div>
+                        ) : aiExplanations[newsItem.newsId] ? (
+                          <p className="text-gray-600 whitespace-pre-line">
+                            {aiExplanations[newsItem.newsId]}
+                          </p>
+                        ) : (
+                          <p className="text-gray-600">
+                            AI가 이 뉴스에 대한 내용을 분석하지 못했습니다. 다시 시도해주세요.
+                          </p>
+                        )}
                       </div>
                     )}
                     
@@ -387,6 +521,40 @@ export default function NewsPage() {
                 확인
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      
+      {/* 랭크 승급 모달 */}
+      {showRankUpModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          {showConfetti && (
+            <ReactConfetti
+              width={width}
+              height={height}
+              recycle={false}
+              numberOfPieces={500}
+              gravity={0.2}
+              colors={['#FFD700', '#FFA500', '#FF4500', '#32CD32', '#1E90FF', '#8A2BE2']}
+            />
+          )}
+          <div className="bg-white rounded-lg p-8 max-w-md w-full shadow-lg transform transition-all text-center z-10">
+            <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-12 h-12 text-yellow-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">축하합니다!</h2>
+            <div className="mb-6">
+              <p className="text-lg text-gray-600 mb-2">랭크가 승급되었습니다!</p>
+              <p className="text-xl font-bold text-emerald-600">{newRank}</p>
+            </div>
+            <button 
+              onClick={() => setShowRankUpModal(false)}
+              className="px-6 py-3 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors font-medium"
+            >
+              확인
+            </button>
           </div>
         </div>
       )}

@@ -69,7 +69,7 @@ export default function ProfilePage() {
               <CardTitle>내 캐릭터</CardTitle>
             </CardHeader>
             <CardContent className="flex justify-center">
-              <div className="border-2 border-black pixel-shadow bg-white h-64 w-64 flex items-center justify-center">
+            <div className="bg-white h-64 w-64 flex items-center justify-center">
                 {userStats.stats.weebeeImageName ? (
                   <Image
                     src={`/images/characters/${userStats.stats.weebeeImageName}.png`}
