@@ -3,26 +3,27 @@
 import { useAuth } from "@/components/auth/AuthProvider"
 import { useEffect, useState } from "react"
 import Image from "next/image"
-import { getUserInfo, getWeebeeImage, getLeaderboard } from "@/lib/api"
+import { getUserInfo, getWeebeeImage, getLeaderboard, getUserStats } from "@/lib/api"
 import { Quote } from "@/components/home/Quote"
 import { RecentQuiz } from "@/components/home/RecentQuiz"
 import type { LeaderboardDto, Page } from "@/lib/types"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import RankProgressBar from "@/components/profile/RankProgressBar"
 
 export default function Home() {
   const { isAuthenticated, user, loading } = useAuth()
   const [userInfo, setUserInfo] = useState<any>(null)
+  const [userStats, setUserStats] = useState<any | null>(null)
   const [loadingUserInfo, setLoadingUserInfo] = useState(false)
 
-  // ★ 리더보드 State 추가
-  const [leaderboard, setLeaderboard] = useState<Page<LeaderboardDto> | null>(null)
-  const [loadingLb, setLoadingLb] = useState(false)
+  // 리더보드 삭제 - 이제 리더보드 페이지에서 확인 가능
 
   useEffect(() => {
     if (isAuthenticated && !loading) {
       setLoadingUserInfo(true)
 
+      // 사용자 기본 정보와 위비 이미지 로드
       Promise.all([getUserInfo(), getWeebeeImage()])
         .then(([userInfoData, weebeeImageData]) => {
           if (userInfoData.success) {
@@ -34,19 +35,17 @@ export default function Home() {
         })
         .catch((err) => console.error("사용자 데이터 로딩 실패:", err))
         .finally(() => setLoadingUserInfo(false))
+      
+      // 정확한 스탯 정보 로드 (프로필 페이지와 동일한 API 사용)
+      getUserStats()
+        .then((data) => {
+          setUserStats(data)
+        })
+        .catch((err) => console.error("스탯 로딩 실패:", err))
     }
   }, [isAuthenticated, loading])
 
-  // ★ 리더보드 로드
-  useEffect(() => {
-    if (isAuthenticated) {
-      setLoadingLb(true)
-      getLeaderboard(0, 5)
-        .then((page) => setLeaderboard(page))
-        .catch((err) => console.error("리더보드 로딩 실패:", err))
-        .finally(() => setLoadingLb(false))
-    }
-  }, [isAuthenticated])
+  // 리더보드 로드 제거 - 메인화면에서는 리더보드를 표시하지 않음
 
   if (loading || loadingUserInfo) {
     return <div className="flex justify-center items-center min-h-[60vh]">로딩 중...</div>
@@ -135,38 +134,29 @@ export default function Home() {
                 <Quote />
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <p className="font-semibold mb-2">
-                    현재 랭크:{" "}
+                    현재 랜크:{" "}
                     <span className="text-emerald-600">
-                      {userInfo?.userrank || "랭크 정보 없음"}
+                      {userInfo?.userrank || "랜크 정보 없음"}
                     </span>
                   </p>
+                  
+                  {/* 랭크 진행 상황 표시 추가 - 프로필 페이지와 동일한 API 데이터 사용 */}
+                  {userInfo?.userrank && userStats && (
+                    <RankProgressBar 
+                      currentStat={userStats.stats?.statSum || 0}
+                      currentRank={userInfo.userrank}
+                      nextRankThreshold={
+                        userInfo.userrank === "BRONZE" ? 900 :
+                        userInfo.userrank === "SILVER" ? 1200 :
+                        1500 // GOLD 이상은 다음 랭크 없음 (컴포넌트 내부에서 자동으로 처리됨)
+                      }
+                    />
+                  )}
+                  
                   <RecentQuiz quizResults={userInfo?.quizResults || []} />
                 </div>
 
-                {/* ★ 리더보드 섹션 */}
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-3">리더보드 (Top 5)</h3>
-
-                  {loadingLb ? (
-                    <p>로딩 중...</p>
-                  ) : leaderboard && leaderboard.content.length > 0 ? (
-                    <ol className="list-decimal list-inside space-y-1">
-                      {leaderboard.content.map((item, idx) => (
-                        <li
-                          key={item.userId}
-                          className="flex justify-between text-sm"
-                        >
-                          <span>
-                            {idx + 1}. {item.nickname}
-                          </span>
-                          <span className="font-medium">{item.statSum}점</span>
-                        </li>
-                      ))}
-                    </ol>
-                  ) : (
-                    <p className="text-gray-500">표시할 리더보드가 없습니다.</p>
-                  )}
-                </div>
+                {/* 리더보드 섹션 제거 - 버튼을 통해 리더보드 페이지로 이동 가능 */}
               </div>
             </div>
           </div>

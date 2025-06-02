@@ -1,4 +1,4 @@
-// File: C:\ITStudy\webeeFront\app\quiz\page.tsx
+// File: C:\Users\kimjeongsoo\Desktop\weebee\front\app\quiz\page.tsx
 import * as entry from '../../../../app/quiz/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

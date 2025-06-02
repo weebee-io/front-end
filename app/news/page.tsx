@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth/AuthProvider"
+import Cookies from "js-cookie"
 import {
   getNews,
   getNewsById,
@@ -106,15 +107,34 @@ export default function NewsPage() {
   // 사용자 랭크 정보 로드
   const loadUserRank = async () => {
     try {
-      const userInfo = await fetch("http://localhost:8085/users/getUserinfo", {
+      const token = Cookies.get("jwt_token");
+      const response = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
         credentials: "include",
-      }).then(r => r.json())
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("사용자 정보 가져오기 실패:", errorText);
+        return;
+      }
+      
+      const userInfo = await response.json();
+      
+      if (!userInfo.success || !userInfo.data) {
+        console.error("사용자 정보 없음:", userInfo);
+        return;
+      }
       
       if (userInfo.success) {
+        // 랭크 정보 저장
         setPrevRank(userInfo.data.userrank)
       }
     } catch (error) {
-      console.error('사용자 랭크 정보 로드 실패:', error)
+      console.error('사용자 정보 로딩 중 오류:', error)
     }
   }
 
@@ -191,9 +211,9 @@ export default function NewsPage() {
     try {
       setLoadingAiExplanation(true)
       
-      // API 요청 데이터 준비 - 명확하게 description만 사용
+      // API 요청 데이터 준비 - 새로운 API 형식에 맞게 news 키 사용
       const requestData = {
-        content: newsItem.description // 해당 기사의 description 필드만 사용
+        news: newsItem.description // 해당 기사의 description 필드만 사용
       }
       
       // description이 없는 경우에 대한 처리
@@ -201,8 +221,8 @@ export default function NewsPage() {
         throw new Error('뉴스 내용이 없어 AI 해설을 생성할 수 없습니다.')
       }
       
-      // AI 해설 API 호출
-      const response = await fetch('http://43.202.154.216:8000/api/ai/news', {
+      // AI 해설 API 호출 - 새로운 엔드포인트 사용
+      const response = await fetch('http://43.202.154.216:8000/api/news/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -223,7 +243,7 @@ export default function NewsPage() {
       }))
       
     } catch (error) {
-      console.error('AI 해설 요청 오류:', error)
+      console.error('AI 요약 해설 요청 오류:', error)
       // 에러 메시지 표시
       setAiExplanations(prev => ({
         ...prev,
@@ -255,9 +275,20 @@ export default function NewsPage() {
         
         // 퀴즈 제출 후 사용자 정보를 다시 가져와서 랭크 변경 확인
         try {
-          const userInfo = await fetch("http://localhost:8085/users/getUserinfo", {
+          const token = Cookies.get("jwt_token");
+          const response = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
             credentials: "include",
-          }).then(r => r.json())
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`사용자 정보 가져오기 실패: ${response.status}`);
+          }
+          
+          const userInfo = await response.json()
           
           if (userInfo.success) {
             const currentRank = userInfo.data.userrank
@@ -381,14 +412,14 @@ export default function NewsPage() {
                         variant="outline"
                         className="flex-1"
                       >
-                        {showAiExplanation === newsItem.newsId ? "AI 해설 닫기" : "AI 해설 보기"}
+                        {showAiExplanation === newsItem.newsId ? "AI 요약&해설 닫기" : "AI 요약&해설 보기"}
                       </Button>
                     </div>
                     
                     {/* AI 해설 영역 */}
                     {showAiExplanation === newsItem.newsId && (
                       <div className="mt-4 p-4 bg-blue-50 rounded-md">
-                        <h3 className="font-semibold mb-2">AI 해설</h3>
+                        <h3 className="font-semibold mb-2">AI 요약&해설</h3>
                         {loadingAiExplanation ? (
                           <div className="flex justify-center items-center h-20">
                             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>

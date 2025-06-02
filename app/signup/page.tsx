@@ -35,7 +35,7 @@ export default function SignupPage() {
   // 기본 정보 제출 처리
   const handleBasicInfoSubmit = async (data: typeof basicInfo) => {
     try {
-      const response = await fetch("http://localhost:8085/users/signup", {
+      const response = await fetch("http://52.78.4.114:8085/users/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -48,26 +48,8 @@ export default function SignupPage() {
       if (result.success) {
         const loginResult = await login(data.id, data.password);
         if (loginResult.success) {
-          // 로그인 성공 후 스탯 초기화 API 호출
-          try {
-            const token = Cookies.get("jwt_token");
-            const statsInitResponse = await fetch("http://localhost:8085/stats/statsInit", {
-              method: "GET",
-              headers: {
-                "Authorization": `Bearer ${token}`
-              }
-            });
-            
-            if (statsInitResponse.ok) {
-              console.log('스탯 초기화 성공');
-            } else {
-              console.warn('스탯 초기화 실패, 상태코드:', statsInitResponse.status);
-            }
-          } catch (statsError) {
-            console.error('스탯 초기화 중 오류:', statsError);
-            // 스탯 초기화 실패해도 계속 진행
-          }
-          
+          // 백엔드에서 statsinit이 자동으로 되기 때문에 여기서 호출할 필요 없음
+          console.log('로그인 성공, 회원가입 진행 중...');  
           setBasicInfo(data)
           setStep("survey")
         } else {
@@ -90,19 +72,18 @@ export default function SignupPage() {
       console.log('서버에 전송할 설문 데이터:', surveyData);
       const token = Cookies.get("jwt_token");
       
-      // 서버 호출 함수 수정
+      // API 호출 헬퍼 함수
       const callApi = async (url: string, method: string, body?: any) => {
         try {
+          const token = Cookies.get("jwt_token");
           const options: RequestInit = {
             method,
-            credentials: 'include',
             headers: {
-              // ML API가 문자열을 반환하므로, Content-Type은 요청 시에만 중요하고,
-              // 응답에서는 Accept 헤더를 지정할 수 있지만, fetch는 기본적으로 모든 응답을 받습니다.
-              "Content-Type": "application/json", // POST 요청 시 본문이 JSON임을 명시
-              "Authorization": `Bearer ${token}`
+              "Content-Type": "application/json",
+              ...(token ? { "Authorization": `Bearer ${token}` } : {})
             },
-          };
+            credentials: "include",
+          }
           
           if (body) {
             options.body = JSON.stringify(body);
@@ -154,7 +135,7 @@ export default function SignupPage() {
       
       
       // 2. 설문조사 제출
-      const surveyResult = await callApi("http://localhost:8085/surveys", "POST", surveyData);
+      const surveyResult = await callApi("http://52.78.4.114:8085/surveys", "POST", surveyData);
       if (!surveyResult.success) {
         setError(`설문조사 제출 오류: ${surveyResult.error}`);
         return;
@@ -166,7 +147,7 @@ export default function SignupPage() {
       
       
       // 4. ML 클러스터링 API 호출
-      const mlResult = await callApi("http://localhost:8085/ml/clusteringwithKafka", "GET");
+      const mlResult = await callApi("http://52.78.4.114:8085/ml/clusteringwithKafka", "GET");
       if (!mlResult.success) {
         setError(`ML 클러스터링 오류: ${mlResult.error}`);
         return;
@@ -180,7 +161,7 @@ export default function SignupPage() {
 
       // 3. 퀴즈 배치 테스트 결과 제출 (금융 지식 스탯 정보)
       console.log('금융 지식 스탯 정보 제출:', surveyData.stats);
-      const quizPlacementResult = await callApi("http://localhost:8085/quiz/placementTest", "POST", surveyData.stats);
+      const quizPlacementResult = await callApi("http://52.78.4.114:8085/quiz/placementTest", "POST", surveyData.stats);
       if (!quizPlacementResult.success) {
         setError(`퀴즈 배치 테스트 제출 오류: ${quizPlacementResult.error}`);
         return;
@@ -189,22 +170,16 @@ export default function SignupPage() {
       
       // 스탯 정보 확인 및 필요시 초기화
       console.log('스탯 정보 확인 중...');
-      const statsCheckResult = await callApi("http://localhost:8085/stats/getuserstats", "GET");
+      const statsCheckResult = await callApi("http://52.78.4.114:8085/stats/getuserstats", "GET");
       
       if (!statsCheckResult.success) {
-        // 스탯이 없는 경우 초기화 시도
-        console.log('스탯 정보 없음, 다시 초기화 시도');
-        const statsInitResult = await callApi("http://localhost:8085/stats/statsInit", "GET");
-        if (!statsInitResult.success) {
-          console.warn('스탯 초기화 실패:', statsInitResult.error);
-        } else {
-          console.log('스탯 초기화 성공');
-        }
+        // 스탯이 없는 경우
+        console.log('스탯 정보 없음, 백엔드에서 자동 초기화됨');
       }
       
       // 4. getUserStats API 호출하여 사용자 랭크 정보 가져오기
       console.log('getUserStats API 호출 시작...');
-      const userStatsResult = await callApi("http://localhost:8085/stats/getuserstats", "GET");
+      const userStatsResult = await callApi("http://52.78.4.114:8085/stats/getuserstats", "GET");
       
       if (!userStatsResult.success) {
         setError(`사용자 스탯 정보 조회 오류: ${userStatsResult.error}`);

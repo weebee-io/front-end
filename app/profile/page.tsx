@@ -6,6 +6,7 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import { getUserStats } from "@/lib/api"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { UserStatsChart } from "@/components/profile/UserStatsChart"
+import RankProgressBar from "@/components/profile/RankProgressBar"
 import Image from "next/image"
 
 // 사용자 스탯 타입
@@ -94,6 +95,19 @@ export default function ProfilePage() {
               <div className="mb-6">
                 <h3 className="text-lg font-semibold mb-2">현재 랭크</h3>
                 <p className="text-2xl font-bold text-emerald-600">{userStats.userRank}</p>
+                
+                {/* 랭크 진행 상황 표시 추가 */}
+                <div className="mt-3">
+                  <RankProgressBar 
+                    currentStat={userStats.stats.statSum}
+                    currentRank={userStats.userRank}
+                    nextRankThreshold={
+                      userStats.userRank === "BRONZE" ? 300 :
+                      userStats.userRank === "SILVER" ? 600 :
+                      userStats.userRank === "GOLD" ? 1000 : 1500
+                    }
+                  />
+                </div>
               </div>
 
               <div className="space-y-4">

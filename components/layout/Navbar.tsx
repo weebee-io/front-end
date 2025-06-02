@@ -43,18 +43,24 @@ export default function Navbar() {
 
           {/* 네비게이션 링크 */}
           <div className="flex items-center space-x-4">
+            {/* 리더보드 버튼 추가 */}
+            <Link href="/leaderboard">
+              <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
+                리더보드
+              </button>
+            </Link>
             <Link href="/profile">
-              <button className="px-4 py-2 text-sm rounded-xl bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-200 shadow-md font-medium">
+              <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
                 내 정보
               </button>
             </Link>
             <Link href="/quiz">
-              <button className="px-4 py-2 text-sm rounded-xl bg-green-500 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
+              <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
                 퀴즈 풀기
               </button>
             </Link>
             <Link href="/news">
-              <button className="px-4 py-2 text-sm rounded-xl bg-orange-500 hover:bg-orange-600 text-white transition-colors duration-200 shadow-md font-medium">
+              <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
                 뉴스
               </button>
             </Link>
@@ -63,14 +69,14 @@ export default function Navbar() {
             {isAuthenticated ? (
               <button 
                 onClick={() => setShowLogoutDialog(true)} 
-                className="px-4 py-2 text-sm rounded-xl bg-gray-700 hover:bg-gray-800 text-white transition-colors duration-200 shadow-md font-medium flex items-center gap-1"
+                className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium flex items-center gap-1"
               >
                 <LogOut className="h-4 w-4" />
                 로그아웃
               </button>
             ) : (
               <Link href="/login">
-                <button className="px-4 py-2 text-sm rounded-xl bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-200 shadow-md font-medium">
+                <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-blue-600 text-white transition-colors duration-200 shadow-md font-medium">
                   로그인
                 </button>
               </Link>

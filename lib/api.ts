@@ -3,9 +3,9 @@
 import Cookies from "js-cookie"
 import { QuizRank } from "./types"
 
-const API_BASE_URL = "http://localhost:8085"
+const API_BASE_URL = "http://52.78.4.114:8085"
 //const CHAT_API_URL = "https://team1chat.ap.loclx.io"
-const CHAT_API_URL = "http://localhost:8005"
+const CHAT_API_URL = "http://43.202.154.216:8000"
 
 /**
  * 인증이 필요한 모든 요청을 보낼 때 사용하는 헬퍼
@@ -125,26 +125,63 @@ export async function logQuizEnd(quizId: number, endTime: Date, isCompleted: boo
   }
 }
 
-// 채팅 메시지 전송하기
+// 채팅 메시지 전송하기 (금융도우미 챗봇)
 export async function sendChatMessage(question: string) {
-  const token = Cookies.get("jwt_token")
+  try {
+    const token = Cookies.get("jwt_token")
+    const response = await fetch(`${CHAT_API_URL}/api/qa/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ question }),
+    })
 
-  const response = await fetch(`${CHAT_API_URL}/chat/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ question }),
-  })
-
-  if (!response.ok) {
-    throw new Error(`채팅 API 요청 실패: ${response.status}`)
+    if (!response.ok) {
+      throw new Error(`채팅 API 요청 실패: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    return { 
+      success: true, 
+      answer: data.answer
+    }
+  } catch (error: any) {
+    console.error('채팅 요청 실패:', error);
+    return { success: false, error: error.message || '알 수 없는 오류가 발생했습니다.' };
   }
-
-  return response.json()
 }
 
+// 퀴즈 힌트 가져오기
+export async function getQuizHint(quizContent: string, choices: string[]) {
+  try {
+    // 새로운 API 서버의 /api/hint/ 엔드포인트로 요청 전송
+    const response = await fetch(`${CHAT_API_URL}/api/hint/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        question: quizContent,
+        choices: choices
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`힌트 API 요청 실패: ${response.status}`)
+    }
+
+    const data = await response.json();
+    return { 
+      success: true, 
+      hint: data.hint 
+    };
+  } catch (error: any) {
+    console.error('힌트 가져오기 실패:', error);
+    return { success: false, error: error.message || '알 수 없는 오류가 발생했습니다.' };
+  }
+}
 
 /** 뉴스 목록 조회 */
 export async function getNews(page = 0, size = 10) {
@@ -159,4 +196,32 @@ export async function getNewsById(newsId: number) {
 /** 뉴스 퀴즈 정답 확인 */
 export async function checkNewsQuizAnswer(quizId: number, answer: string) {
   return fetchWithAuth(`/newsQuiz/iscorrect/${quizId}/${answer}`)
+}
+
+/** 뉴스 해설 AI API 호출 - 뉴스 내용 요약 및 키워드 설명 */
+export async function getNewsExplanation(content: string) {
+  try {
+    const token = Cookies.get("jwt_token")
+    const response = await fetch(`${CHAT_API_URL}/api/news/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ news: content }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`뉴스 해설 AI 요청 실패: ${response.status}`)
+    }
+
+    const data = await response.json()
+    return { 
+      success: true, 
+      explanation: data.summary 
+    }
+  } catch (error: any) {
+    console.error('뉴스 해설 요청 실패:', error);
+    return { success: false, error: error.message || '알 수 없는 오류가 발생했습니다.' };
+  }
 }

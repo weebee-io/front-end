@@ -4,12 +4,14 @@ import { QuizRank } from "@/lib/types"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth/AuthProvider"
+import Cookies from "js-cookie"
 import {
   getQuizzes,
   getUserQuizResults,
   checkQuizAnswer,
   logQuizStart,
   logQuizEnd,
+  getQuizHint,
 } from "@/lib/api"
 import {
   Card,
@@ -18,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import ReactConfetti from 'react-confetti'
 import { useWindowSize } from 'react-use'
@@ -62,6 +65,7 @@ export default function QuizPage() {
   const [subject, setSubject] = useState<string>(SUBJECTS[0])
   const [loadingQuizzes, setLoadingQuizzes] = useState(false)
   const [quizStartTimes, setQuizStartTimes] = useState<{[key: number]: Date}>({})
+  const [error, setError] = useState<string | null>(null)
   
   // 랭크 승급 관련 상태
   const [prevRank, setPrevRank] = useState<string | null>(null)
@@ -87,6 +91,11 @@ export default function QuizPage() {
     correct: boolean,
     message: string
   } | null>(null)
+  
+  // 힌트 관련 상태
+  const [showHint, setShowHint] = useState<{[id: number]: boolean}>({})
+  const [hints, setHints] = useState<{[id: number]: string}>({})
+  const [loadingHint, setLoadingHint] = useState<{[id: number]: boolean}>({})
 
   const router = useRouter()
 
@@ -115,20 +124,39 @@ export default function QuizPage() {
   // 초기 사용자 정보 불러오기 - 승급 초기화
   const loadUserInfo = async () => {
     try {
-      const userInfo = await fetch("http://localhost:8085/users/getUserinfo", {
+      const token = Cookies.get("jwt_token");
+      const response = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
         credentials: "include",
-      }).then(r => r.json())
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("사용자 정보 가져오기 실패:", errorText);
+        setError("사용자 정보를 가져오는 중 오류가 발생했습니다. 로그인을 다시 시도해주세요.");
+        return;
+      }
+      
+      const userInfo = await response.json();
+      
+      if (!userInfo.success || !userInfo.data) {
+        console.error("사용자 정보 없음:", userInfo);
+        setError("사용자 정보를 가져오는 중 오류가 발생했습니다.");
+        return;
+      }
       
       if (userInfo.success) {
-        const currentRank = userInfo.data.userrank
-        // 초기 값 설정
-        setPrevRank(currentRank)
-        setUserRank(currentRank)
-        setRankUpdateInitialized(true)
-        console.log('초기 랜크 설정:', currentRank)
+        // 승급 감지 장치
+        setRankUpdateInitialized(true) // 이것이 true일 때만 userRank의 변화가 승급으로 인식됨
+        setUserRank(userInfo.data.userrank)
+        setPrevRank(userInfo.data.userrank)
       }
     } catch (error) {
-      console.error('사용자 정보 가져오기 실패:', error)
+      console.error('사용자 정보 로딩 중 오류:', error)
+      setError('사용자 정보를 가져오는 중 오류가 발생했습니다.')
     }
   }
 
@@ -144,14 +172,37 @@ export default function QuizPage() {
     setLoadingQuizzes(true)
     try {
       // 1) 유저 랭크
-      const ui = await fetch("http://localhost:8085/users/getUserinfo", {
+      const token = Cookies.get("jwt_token");
+      const response = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
         credentials: "include",
-      }).then(r => r.json())
-      if (ui.success) setUserRank(ui.data.userrank)
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("사용자 정보 가져오기 실패:", errorText);
+        setError("사용자 정보를 가져오는 중 오류가 발생했습니다.");
+        setLoadingQuizzes(false);
+        return;
+      }
+      
+      const ui = await response.json();
+      
+      if (!ui.success || !ui.data) {
+        console.error("사용자 정보 없음:", ui);
+        setError("사용자 정보를 가져오는 중 오류가 발생했습니다.");
+        setLoadingQuizzes(false);
+        return;
+      }
+      
+      if (ui.success) setUserRank(ui.data.userrank);
 
       // 2) 퀴즈
-      const all = await getQuizzes(subject, ui.data.userrank)
-      const filtered = all.filter((q: Quiz) => q.quizRank === ui.data.userrank)
+      const all = await getQuizzes(subject, ui.data.userrank);
+      const filtered = all.filter((q: Quiz) => q.quizRank === ui.data.userrank);
       setQuizzes(filtered)
 
       // 3) 이미 푼 이력 중 **정답인 것만**
@@ -188,6 +239,55 @@ export default function QuizPage() {
       }
     } catch (e) {
       console.error('퀴즈 종료 로깅 실패:', e);
+    }
+  }
+  
+  // 힌트 가져오기 함수
+  const handleGetHint = async (quizId: number) => {
+    try {
+      setLoadingHint(prev => ({ ...prev, [quizId]: true }));
+      
+      // 해당 퀴즈 찾기
+      const quiz = quizzes.find(q => q.quizId === quizId);
+      if (!quiz) {
+        setHints(prev => ({ ...prev, [quizId]: "퀴즈 정보를 찾을 수 없습니다." }));
+        setShowHint(prev => ({ ...prev, [quizId]: true }));
+        setLoadingHint(prev => ({ ...prev, [quizId]: false }));
+        return;
+      }
+      
+      // 퀴즈 내용과 선택지를 추출
+      const quizContent = quiz.quizContent;
+      let choices: string[] = [];
+      
+      if (quiz.option2) {
+        // 2지선다일 경우
+        choices = [quiz.option2.choiceA, quiz.option2.choiceB];
+      } else if (quiz.option4) {
+        // 4지선다일 경우
+        choices = [quiz.option4.choiceA, quiz.option4.choiceB, quiz.option4.choiceC, quiz.option4.choiceD];
+      }
+      
+      const result = await getQuizHint(quizContent, choices);
+      
+      if (result.success) {
+        // API 응답에서 힌트 필드가 없을 경우 대체 텍스트 사용
+        const hintText = (result as any).answer || result.hint || "힌트가 없습니다.";
+        setHints(prev => ({ ...prev, [quizId]: hintText }));
+        setShowHint(prev => ({ ...prev, [quizId]: true }));
+      } else {
+        console.error("힌트 가져오기 실패:", result.error);
+        // 오류 상황에도 사용자에게 메시지 표시
+        setHints(prev => ({ ...prev, [quizId]: "힌트를 가져오는 중 오류가 발생했습니다. 다시 시도해주세요." }));
+        setShowHint(prev => ({ ...prev, [quizId]: true }));
+      }
+    } catch (error) {
+      console.error("힌트 API 호출 오류:", error);
+      // 예외 발생 시에도 사용자에게 피드백 제공
+      setHints(prev => ({ ...prev, [quizId]: "힌트 서버와의 통신에 문제가 발생했습니다. 잠시 후 다시 시도해주세요." }));
+      setShowHint(prev => ({ ...prev, [quizId]: true }));
+    } finally {
+      setLoadingHint(prev => ({ ...prev, [quizId]: false }));
     }
   }
 
@@ -242,7 +342,7 @@ export default function QuizPage() {
         
         // 퀴즈 제출 후 사용자 정보를 다시 가져와서 랭크 변경 확인
         try {
-          const userInfo = await fetch("http://localhost:8085/users/getUserinfo", {
+          const userInfo = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
             credentials: "include",
           }).then(r => r.json())
           
@@ -297,6 +397,13 @@ export default function QuizPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6 py-8">
       <h1 className="text-2xl font-bold">퀴즈 풀기</h1>
+
+      {/* 오류 표시 */}
+      {error && (
+        <Alert className="mb-4 bg-red-50 border-red-400">
+          <AlertDescription className="text-red-600">{error}</AlertDescription>
+        </Alert>
+      )}
 
       {/* 과목 선택 */}
       <div>
@@ -461,8 +568,35 @@ export default function QuizPage() {
                     </svg>
                   </div>
                   <h3 className="text-xl font-bold text-red-600 mb-2">오답입니다!</h3>
-                  <p className="text-gray-600">{currentResult.message}</p>
-                  <p className="text-lg font-bold text-red-600">-10점</p>
+                  <p className="text-gray-600 mb-3">{currentResult.message}</p>
+                  <p className="text-lg font-bold text-red-600 mb-4">-10점</p>
+                  
+                  {/* 힌트 버튼 */}
+                  {!showHint[currentResult.quizId] && (
+                    <button 
+                      onClick={() => handleGetHint(currentResult.quizId)}
+                      className="px-4 py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors"
+                      disabled={loadingHint[currentResult.quizId]}
+                    >
+                      {loadingHint[currentResult.quizId] ? (
+                        <span className="flex items-center justify-center">
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          로딩 중...
+                        </span>
+                      ) : "힌트 보기"}
+                    </button>
+                  )}
+                  
+                  {/* 힌트 내용 표시 */}
+                  {showHint[currentResult.quizId] && hints[currentResult.quizId] && (
+                    <div className="mt-4 p-4 bg-blue-50 rounded-md text-left">
+                      <h4 className="font-semibold mb-2">힌트</h4>
+                      <p className="text-gray-700 whitespace-pre-line">{hints[currentResult.quizId]}</p>
+                    </div>
+                  )}
                 </>
               )}
               

@@ -8,16 +8,15 @@ WORKDIR /app
 RUN corepack enable && corepack prepare yarn@4.9.1 --activate
 
 # Copy package.json and yarn.lock
-COPY package.json yarn.lock* ./.yarnrc.yml ./
-COPY .yarn ./.yarn
-RUN yarn install --immutable
+COPY package.json ./
+COPY yarn.lock ./
+
+# Set up dependencies with npm instead of Yarn to avoid .yarn directory issues
+RUN npm install
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
-
-# Enable Corepack for Yarn 4 support in builder stage
-RUN corepack enable && corepack prepare yarn@4.9.1 --activate
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -25,7 +24,7 @@ COPY . .
 # Next.js collects completely anonymous telemetry data about general usage
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN yarn build
+RUN npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner

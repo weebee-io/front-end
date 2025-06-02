@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // 로그인 함수
   const login = async (id: string, password: string) => {
     try {
-      const response = await fetch("http://localhost:8085/users/login", {
+      const response = await fetch("http://52.78.4.114:8085/users/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -56,8 +56,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json()
 
       if (data.success) {
-        // JWT 토큰을 쿠키에 저장 (30분 유효)
-        Cookies.set("jwt_token", data.data, { expires: 1 / 48 }) // 30분 = 1일/48
+        // JWT 토큰을 쿠키에 저장 (유효 기간 1일로 연장)
+        Cookies.set("jwt_token", data.data, { 
+          expires: 1, // 1일 유효
+          path: '/',  // 모든 경로에서 접근 가능
+          sameSite: 'lax' // CORS 관련 설정
+        })
         setIsAuthenticated(true)
         // 사용자 정보 설정 (필요한 경우)
         // setUser(userData)
