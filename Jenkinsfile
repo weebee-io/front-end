@@ -64,22 +64,22 @@ pipeline {
                 // EC2 서버에 SSH로 접속하여 배포 스크립트 실행
                 sshagent(['front-ec2-ssh']) {
                     // 기존 컨테이너 중지 및 삭제, 새 이미지 가져오기, 컨테이너 실행
-                    sh '''
+                    sh """
                         ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} '
                             # 기존 컨테이너가 있으면 중지 및 삭제
                             docker stop weebee-frontend || true
                             docker rm weebee-frontend || true
                             
                             # 최신 이미지 가져오기
-                            docker pull ${DOCKER_IMAGE_NAME}:latest
+                            docker pull kimjeongsoo/weebee-front:latest
                             
                             # 새 컨테이너 실행
-                            docker run -d -p 3000:3000 --restart unless-stopped --name weebee-frontend ${DOCKER_IMAGE_NAME}:latest
+                            docker run -d -p 3000:3000 --restart unless-stopped --name weebee-frontend kimjeongsoo/weebee-front:latest
                             
                             # 사용하지 않는 이미지 정리
                             docker image prune -af
                         '
-                    '''
+                    """
                 }
             }
         }
