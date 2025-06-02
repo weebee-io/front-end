@@ -6,7 +6,7 @@ pipeline {
         DOCKER_HUB_CREDENTIALS = credentials('jeongsoo-docker-hub')
         // Docker 이미지 이름과 태그
         DOCKER_IMAGE_NAME = 'kimjeongsoo/weebee-front'
-        DOCKER_IMAGE_TAG = "${env.BUILD_NUMBER}"
+        DOCKER_IMAGE_TAG = "latest"
         // EC2 SSH 접속 정보 (Jenkins Credentials에 등록된 ID)
         EC2_SSH_CREDENTIALS = credentials('front-ec2-ssh')
         // EC2 접속 정보
