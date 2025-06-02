@@ -136,7 +136,7 @@ export default function Home() {
                   <p className="font-semibold mb-2">
                     현재 랜크:{" "}
                     <span className="text-emerald-600">
-                      {userInfo?.userrank || "랜크 정보 없음"}
+                      {userInfo?.userrank || "랭크 정보 없음"}
                     </span>
                   </p>
                   

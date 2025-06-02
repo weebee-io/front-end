@@ -6,6 +6,7 @@ import Image from "next/image"
 import { useState } from "react"
 import { LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { usePathname } from "next/navigation"
 import {
   Dialog,
   DialogContent,
@@ -18,14 +19,19 @@ import {
 export default function Navbar() {
   const { isAuthenticated, logout } = useAuth()
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
+  const pathname = usePathname()
 
   const handleLogout = () => {
     logout()
     setShowLogoutDialog(false)
   }
 
-  // 로그인하지 않은 경우 네비게이션 바 숨기기
-  if (!isAuthenticated) {
+  // 회원가입 관련 경로에서 네비게이션 바 숨기기
+  const hideNavbarPaths = ['/signup']
+  const isSignupPath = pathname === '/signup' || pathname?.startsWith('/signup/')
+  
+  // 로그인하지 않은 경우 또는 회원가입 경로인 경우 네비게이션 바 숨기기
+  if (!isAuthenticated || isSignupPath) {
     return null
   }
   
@@ -38,12 +44,22 @@ export default function Navbar() {
             <div className="mr-3 bg-black p-1 pixel-shadow">
               {/*<Image src="images/characters/weebeefriends.png" alt="로고" width={40} height={40} className="pixelated" />*/}
             </div>
-            <span className="font-bold text-xl text-black">금융 학습 플랫폼</span>
+            <span className="font-bold text-xl text-black">우리 FISA 금융 학습</span>
           </Link>
 
           {/* 네비게이션 링크 */}
           <div className="flex items-center space-x-4">
-            {/* 리더보드 버튼 추가 */}
+            {/* 네비게이션 메뉴 */}
+            <Link href="/news">
+              <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
+                뉴스
+              </button>
+            </Link>
+            <Link href="/quiz">
+              <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
+                퀴즈 풀기
+              </button>
+            </Link>
             <Link href="/leaderboard">
               <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
                 리더보드
@@ -52,16 +68,6 @@ export default function Navbar() {
             <Link href="/profile">
               <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
                 내 정보
-              </button>
-            </Link>
-            <Link href="/quiz">
-              <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
-                퀴즈 풀기
-              </button>
-            </Link>
-            <Link href="/news">
-              <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
-                뉴스
               </button>
             </Link>
 

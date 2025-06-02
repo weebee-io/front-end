@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { BasicInfoForm } from "@/components/auth/BasicInfoForm"
 import { SurveyForm } from "@/components/auth/SurveyForm"
+import { TermsOfServiceModal, ServiceUnavailableMessage } from "@/components/signup/TermsOfServiceModal"
 
 // 회원가입 단계
 type SignupStep = "basic-info" | "survey"
@@ -29,39 +30,76 @@ export default function SignupPage() {
   const [showRankModal, setShowRankModal] = useState(false)
   const [isLoading, setIsLoading] = useState(false) // 랭크 측정 중 로딩 상태
   const [userRank, setUserRank] = useState("") // 최종적으로 모달에 표시될 랭크
+  const [showTermsModal, setShowTermsModal] = useState(false)
+  const [showServiceUnavailableMessage, setShowServiceUnavailableMessage] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [submittedBasicInfo, setSubmittedBasicInfo] = useState<typeof basicInfo | null>(null)
   const router = useRouter()
   const { login } = useAuth();
 
   // 기본 정보 제출 처리
   const handleBasicInfoSubmit = async (data: typeof basicInfo) => {
-    try {
-      const response = await fetch("http://52.78.4.114:8085/users/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      })
+    // 기본 정보를 저장하고 정보이용동의 모달을 표시
+    setSubmittedBasicInfo({...data});
+    setShowTermsModal(true);
+  };
+  
+  // 정보이용동의 동의 처리
+  const handleAgreeToTerms = async (consents: {
+    privacy: boolean;
+    marketing: boolean;
+    myData: boolean;
+    thirdParty: boolean;
+  }) => {
+    // 필수 개인정보 동의만 있으면 진행
+    if (consents.privacy) {
+      setAgreedToTerms(true);
+      setShowTermsModal(false);
+      
+      // 중요: 실제 구현 시에는 동의 정보도 백엔드에 전송하는 로직이 필요할 수 있음
+      // 저장된 기본 정보로 회원가입 진행
+      if (submittedBasicInfo) {
+      try {
+        const response = await fetch("http://52.78.4.114:8085/users/signup", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(submittedBasicInfo),
+        })
 
-      const result = await response.json()
+        const result = await response.json()
 
-      if (result.success) {
-        const loginResult = await login(data.id, data.password);
-        if (loginResult.success) {
-          // 백엔드에서 statsinit이 자동으로 되기 때문에 여기서 호출할 필요 없음
-          console.log('로그인 성공, 회원가입 진행 중...');  
-          setBasicInfo(data)
-          setStep("survey")
+        if (result.success) {
+          const loginResult = await login(submittedBasicInfo.id, submittedBasicInfo.password);
+          if (loginResult.success) {
+            // 백엔드에서 statsinit이 자동으로 되기 때문에 여기서 호출할 필요 없음
+            console.log('로그인 성공, 회원가입 진행 중...');  
+            setBasicInfo(submittedBasicInfo)
+            setStep("survey")
+          } else {
+            setError("회원가입은 성공했으나 자동 로그인에 실패했습니다: " + loginResult.message)
+          }
         } else {
-          setError("회원가입은 성공했으나 자동 로그인에 실패했습니다: " + loginResult.message)
+          setError(result.message || "회원가입 중 오류가 발생했습니다.")
         }
-      } else {
-        setError(result.message || "회원가입 중 오류가 발생했습니다.")
+      } catch (err) {
+        setError("서버 연결 중 오류가 발생했습니다.")
       }
-    } catch (err) {
-      setError("서버 연결 중 오류가 발생했습니다.")
     }
   }
+  }
+  
+  // 정보이용동의 거부 처리
+  const handleDeclineTerms = () => {
+    setShowTermsModal(false);
+    setShowServiceUnavailableMessage(true);
+  };
+  
+  // 서비스 이용 불가 메시지 닫기
+  const handleCloseServiceUnavailable = () => {
+    setShowServiceUnavailableMessage(false);
+  };
 
   // 설문조사 제출 처리
   const handleSurveySubmit = async (surveyData: any) => {
@@ -294,6 +332,19 @@ export default function SignupPage() {
           </div>
         </div>
       )}
+      
+      {/* 정보이용동의 모달 */}
+      <TermsOfServiceModal
+        isOpen={showTermsModal}
+        onAgree={handleAgreeToTerms}
+        onDecline={handleDeclineTerms}
+      />
+
+      {/* 서비스 이용 불가 메시지 */}
+      <ServiceUnavailableMessage
+        isOpen={showServiceUnavailableMessage}
+        onClose={handleCloseServiceUnavailable}
+      />
     </div>
   )
 }
