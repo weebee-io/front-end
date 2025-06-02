@@ -472,19 +472,56 @@ export function SurveyForm({ onSubmit }: SurveyFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="spend_volatility">월별 소비 변동성 (0~1)</Label>
-              <Input
-                id="spend_volatility"
-                name="spend_volatility"
-                type="number"
-                min="0"
-                max="1"
-                step="0.01"
-                value={surveyData.spend_volatility || ""}
-                onChange={handleInputChange}
-                required
-                placeholder="예: 0.2"
-              />
+              <Label htmlFor="spend_volatility">월별 소비 변동성</Label>
+              <div className="mt-2">
+                <div className="flex items-center space-x-6">
+                  <div className="flex items-center">
+                    <input
+                      id="spend_volatility_0"
+                      name="spend_volatility"
+                      type="radio"
+                      className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                      value="0"
+                      checked={surveyData.spend_volatility === 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          // 숫자로 변환하여 저장
+                          const newData = { ...surveyData, spend_volatility: 0 };
+                          setSurveyData(newData);
+                        }
+                      }}
+                      required
+                    />
+                    <label htmlFor="spend_volatility_0" className="ml-2 block text-sm font-medium leading-6 text-gray-900">
+                      낮음
+                    </label>
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      id="spend_volatility_1"
+                      name="spend_volatility"
+                      type="radio"
+                      className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                      value="1"
+                      checked={surveyData.spend_volatility === 1}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          // 숫자로 변환하여 저장
+                          const newData = { ...surveyData, spend_volatility: 1 };
+                          setSurveyData(newData);
+                        }
+                      }}
+                      required
+                    />
+                    <label htmlFor="spend_volatility_1" className="ml-2 block text-sm font-medium leading-6 text-gray-900">
+                      높음
+                    </label>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500 mt-3">
+                  매달 일정하게 소비하는 경우 '낮음', 매달 소비 변동이 많은 경우 '높음'을 선택해주세요.
+                </p>
+              </div>
             </div>
 
             <div className="space-y-2">

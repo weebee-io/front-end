@@ -37,7 +37,7 @@ export default function Navbar() {
   
   return (
     <nav className="bg-white shadow-sm pixel-border">
-      <div className="container mx-auto px-4 py-5">
+      <div className="container mx-auto px-8 py-5">
         <div className="flex justify-between items-center">
           {/* 로고 */}
           <Link href="/" className="flex items-center">
@@ -51,22 +51,22 @@ export default function Navbar() {
           <div className="flex items-center space-x-4">
             {/* 네비게이션 메뉴 */}
             <Link href="/news">
-              <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
+              <button className="px-8 py-4 text rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
                 뉴스
               </button>
             </Link>
             <Link href="/quiz">
-              <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
+              <button className="px-8 py-4 text rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
                 퀴즈 풀기
               </button>
             </Link>
             <Link href="/leaderboard">
-              <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
+              <button className="px-8 py-4 text rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
                 리더보드
               </button>
             </Link>
             <Link href="/profile">
-              <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
+              <button className="px-8 py-4 text rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium">
                 내 정보
               </button>
             </Link>
@@ -75,14 +75,14 @@ export default function Navbar() {
             {isAuthenticated ? (
               <button 
                 onClick={() => setShowLogoutDialog(true)} 
-                className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium flex items-center gap-1"
+                className="px-6 py-4 text rounded-xl bg-emerald-600 hover:bg-green-600 text-white transition-colors duration-200 shadow-md font-medium flex items-center gap-1"
               >
-                <LogOut className="h-4 w-4" />
+                <LogOut className="h-6 w-6" />
                 로그아웃
               </button>
             ) : (
               <Link href="/login">
-                <button className="px-4 py-2 text-sm rounded-xl bg-emerald-600 hover:bg-blue-600 text-white transition-colors duration-200 shadow-md font-medium">
+                <button className="px-8 py-4 text rounded-xl bg-emerald-600 hover:bg-blue-600 text-white transition-colors duration-200 shadow-md font-medium">
                   로그인
                 </button>
               </Link>

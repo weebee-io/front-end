@@ -66,6 +66,8 @@ export default function QuizPage() {
   const [loadingQuizzes, setLoadingQuizzes] = useState(false)
   const [quizStartTimes, setQuizStartTimes] = useState<{[key: number]: Date}>({})
   const [error, setError] = useState<string | null>(null)
+  // 현재 열린 퀴즈 ID 추적 (null이면 모든 퀴즈가 닫힌 상태)
+  const [openQuizId, setOpenQuizId] = useState<number | null>(null)
   
   // 랭크 승급 관련 상태
   const [prevRank, setPrevRank] = useState<string | null>(null)
@@ -293,25 +295,29 @@ export default function QuizPage() {
 
   // 퀴즈 펼침/접기 핸들러
   const toggleQuiz = async (quiz: Quiz) => {
-    const newQuizzes = quizzes.map(q => {
-      if (q.quizId === quiz.quizId) {
-        const newIsExpanded = !q.isExpanded;
-        if (newIsExpanded) {
-          // 퀴즈를 펼칠 때 시작 시간 기록
-          setQuizStartTimes(prev => ({
-            ...prev,
-            [quiz.quizId]: new Date()
-          }));
-          handleQuizStart(quiz.quizId);
-        } else {
-          // 퀴즈를 접을 때 종료 로그 기록
-          handleQuizEnd(quiz.quizId, completed.has(quiz.quizId));
-        }
-        return { ...q, isExpanded: newIsExpanded };
-      }
-      return q;
-    });
-    setQuizzes(newQuizzes);
+    // 이미 열린 퀴즈인 경우 닫기
+    if (openQuizId === quiz.quizId) {
+      // 퀴즈를 접을 때 종료 로그 기록
+      handleQuizEnd(quiz.quizId, completed.has(quiz.quizId));
+      setOpenQuizId(null);
+      return;
+    }
+    
+    // 다른 퀴즈가 열려있었다면 닫기
+    if (openQuizId !== null) {
+      // 이전 퀴즈 종료 로그 기록
+      handleQuizEnd(openQuizId, completed.has(openQuizId));
+    }
+    
+    // 새 퀴즈 열기
+    setOpenQuizId(quiz.quizId);
+    
+    // 퀴즈를 펼칠 때 시작 시간 기록
+    setQuizStartTimes(prev => ({
+      ...prev,
+      [quiz.quizId]: new Date()
+    }));
+    handleQuizStart(quiz.quizId);
   }
 
   // 제출 핸들러
@@ -405,18 +411,24 @@ export default function QuizPage() {
         </Alert>
       )}
 
-      {/* 과목 선택 */}
-      <div>
-        <label className="mr-2">과목:</label>
-        <select
-          className="border px-2 py-1 rounded"
-          value={subject}
-          onChange={e => setSubject(e.target.value)}
-        >
-          {SUBJECTS.map(s => (
-            <option key={s} value={s}>{SUBJECT_NAMES[s]}</option>
-          ))}
-        </select>
+      {/* 과목 선택 탭 */}
+      <div className="mb-4">
+        <div className="flex items-center">
+          <span className="mr-3 font-medium">과목:</span>
+          <div className="flex space-x-2">
+            {SUBJECTS.map(s => (
+              <button
+                key={s}
+                className={`px-6 py-3 rounded-md transition-colors text-base font-medium ${subject === s 
+                  ? 'bg-emerald-500 text-white' 
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                onClick={() => setSubject(s)}
+              >
+                {SUBJECT_NAMES[s]}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* 퀴즈가 없으면 */}
@@ -439,7 +451,7 @@ export default function QuizPage() {
                 )}
               </CardHeader>
 
-              {!quiz.isExpanded ? (
+              {openQuizId !== quiz.quizId ? (
                 <CardFooter>
                   <Button
                     onClick={() => toggleQuiz(quiz)}
@@ -521,7 +533,7 @@ export default function QuizPage() {
                       {isDone ? "제출 완료" : "제출하기"}
                     </Button>
                     <Button
-                      onClick={() => toggleQuiz(quiz)}
+                      onClick={() => setOpenQuizId(null)}
                       variant="outline"
                     >
                       닫기
