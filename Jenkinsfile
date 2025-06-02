@@ -24,8 +24,24 @@ pipeline {
         
         stage('Build Docker Image') {
             steps {
-                // Docker 이미지 빌드
-                sh 'docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} -t ${DOCKER_IMAGE_NAME}:latest .'
+                // Docker 이미지 빌드 (작업 디렉토리 확인)
+                sh 'ls -la'
+                sh 'pwd'
+                
+                // 저장소 루트에 Dockerfile이 없으면 front 디렉토리로 이동하여 빌드
+                sh '''
+                    if [ -f "Dockerfile" ]; then
+                        echo "Dockerfile found in root directory"
+                        docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} -t ${DOCKER_IMAGE_NAME}:latest .
+                    elif [ -d "front" ] && [ -f "front/Dockerfile" ]; then
+                        echo "Dockerfile found in front directory"
+                        cd front
+                        docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} -t ${DOCKER_IMAGE_NAME}:latest .
+                    else
+                        echo "ERROR: Dockerfile not found in root or front directory"
+                        exit 1
+                    fi
+                '''
             }
         }
         
