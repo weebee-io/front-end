@@ -12,7 +12,7 @@ COPY package.json ./
 COPY yarn.lock ./
 
 # Set up dependencies with npm instead of Yarn to avoid .yarn directory issues
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -24,7 +24,7 @@ COPY . .
 # Next.js collects completely anonymous telemetry data about general usage
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN npm run build
+RUN npm run build --legacy-peer-deps
 
 # Production image, copy all the files and run next
 FROM base AS runner
