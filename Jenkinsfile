@@ -62,7 +62,7 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 // EC2 서버에 SSH로 접속하여 배포 스크립트 실행
-                sshagent(['${EC2_SSH_CREDENTIALS}']) {
+                sshagent([EC2_SSH_CREDENTIALS]) {
                     // 기존 컨테이너 중지 및 삭제, 새 이미지 가져오기, 컨테이너 실행
                     sh '''
                         ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} '
