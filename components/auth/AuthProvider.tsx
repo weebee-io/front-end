@@ -1,4 +1,3 @@
-
 "use client"
 
 import type React from "react"
@@ -46,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // 로그인 함수
   const login = async (id: string, password: string) => {
     try {
-      const response = await fetch("http://52.78.4.114:8085/users/login", {
+      const response = await fetch("http://52.78.4.114:8080/users/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -87,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // 사용자 정보 가져오기 (랭크 확인용)
   const fetchUserInfo = async () => {
     try {
-      const response = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
+      const response = await fetch("http://52.78.4.114:8080/users/getUserinfo", {
         credentials: "include"
       });
 

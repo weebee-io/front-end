@@ -3,7 +3,7 @@
 import Cookies from "js-cookie"
 import { QuizRank } from "./types"
 
-const API_BASE_URL = "http://52.78.4.114:8085"
+const API_BASE_URL = "http://52.78.4.114:8080"
 //const CHAT_API_URL = "https://team1chat.ap.loclx.io"
 const CHAT_API_URL = "http://43.202.154.216:8000"
 

@@ -121,7 +121,7 @@ export default function NewsPage() {
   const loadUserRank = async () => {
     try {
       const token = Cookies.get("jwt_token");
-      const response = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
+      const response = await fetch("http://52.78.4.114:8080/users/getUserinfo", {
         credentials: "include",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -292,7 +292,7 @@ export default function NewsPage() {
         // 퀴즈 제출 후 사용자 정보를 다시 가져와서 랭크 변경 확인
         try {
           const token = Cookies.get("jwt_token");
-          const response = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
+          const response = await fetch("http://52.78.4.114:8080/users/getUserinfo", {
             credentials: "include",
             headers: {
               "Authorization": `Bearer ${token}`,
@@ -498,7 +498,7 @@ export default function NewsPage() {
                                 
                                 {isDone && (
                                   <span className="ml-2 text-sm text-green-600">
-                                    ✓ 정답 완료 (+{quiz.newsquizScore}점)
+                                    ✓ 정답 완료
                                   </span>
                                 )}
                               </div>
