@@ -134,7 +134,7 @@ export default function Home() {
                 <Quote />
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <p className="font-semibold mb-2">
-                    현재 랜크:{" "}
+                    현재 랭크:{" "}
                     <span className="text-emerald-600">
                       {userInfo?.userrank || "랭크 정보 없음"}
                     </span>
