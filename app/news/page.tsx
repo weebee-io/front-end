@@ -74,8 +74,21 @@ export default function NewsPage() {
   // 사용자가 선택한 답
   const [answers, setAnswers] = useState<{ [id: number]: string }>({})
   
-  // 제출 완료된 퀴즈 ID 집합
-  const [completed, setCompleted] = useState<Set<number>>(new Set())
+  // 제출 완료된 퀴즈 ID 집합 - 로컬 스토리지에서 불러오기
+  const [completed, setCompleted] = useState<Set<number>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('completedQuizzes')
+      return saved ? new Set(JSON.parse(saved)) : new Set()
+    }
+    return new Set()
+  })
+  
+  // completed 상태가 변경될 때마다 로컬 스토리지에 저장
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('completedQuizzes', JSON.stringify(Array.from(completed)))
+    }
+  }, [completed])
   
   // 결과 모달 관련 상태
   const [showResultModal, setShowResultModal] = useState(false)
@@ -271,7 +284,10 @@ export default function NewsPage() {
       setShowResultModal(true)
       
       if (result.isCorrect) {
-        setCompleted(prev => new Set(prev).add(quizId))
+        // 로컬 스토리지에 완료된 퀴즈 저장
+        const newCompleted = new Set(completed)
+        newCompleted.add(quizId)
+        setCompleted(newCompleted)
         
         // 퀴즈 제출 후 사용자 정보를 다시 가져와서 랭크 변경 확인
         try {
@@ -477,7 +493,7 @@ export default function NewsPage() {
                                   disabled={isDone || !answers[quiz.newsquizId]}
                                   size="sm"
                                 >
-                                  {isDone ? "제출 완료" : "제출하기"}
+                                  {isDone ? "이미 푼 문제입니다" : "제출하기"}
                                 </Button>
                                 
                                 {isDone && (
