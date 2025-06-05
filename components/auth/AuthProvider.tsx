@@ -1,3 +1,4 @@
+
 "use client"
 
 import type React from "react"
@@ -86,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // 사용자 정보 가져오기 (랭크 확인용)
   const fetchUserInfo = async () => {
     try {
-      const response = await fetch("http://localhost:8080/users/getUserinfo", {
+      const response = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
         credentials: "include"
       });
 

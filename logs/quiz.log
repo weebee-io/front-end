@@ -1,0 +1,14 @@
+{"event_type":"quizStarted","timestamp":"2025-06-04T10:23:00.620Z","user_id":"unknown","properties":{"quiz_id":"q9"}}
+{"event_type":"quizEnded","timestamp":"2025-06-04T10:23:06.979Z","user_id":"unknown","properties":{"quiz_id":"q9","is_completed":true}}
+{"event_type":"quizSubmitted","timestamp":"2025-06-04T10:23:07.077Z","user_id":"unknown","properties":{"experiment_quiz_streak":"unknown","experiment_quiz_feedback":"unknown","quiz_id":"q9","quiz_level":10,"is_correct":true,"hint_used":false,"streak_count":0,"time_taken_sec":6.456}}
+{"event_type":"quizStarted","timestamp":"2025-06-04T10:23:22.765Z","user_id":"unknown","properties":{"quiz_id":"q13"}}
+{"event_type":"quizEnded","timestamp":"2025-06-04T10:23:25.352Z","user_id":"unknown","properties":{"quiz_id":"q13","is_completed":true}}
+{"event_type":"quizSubmitted","timestamp":"2025-06-04T10:23:25.461Z","user_id":"unknown","properties":{"experiment_quiz_streak":"unknown","experiment_quiz_feedback":"unknown","quiz_id":"q13","quiz_level":10,"is_correct":true,"hint_used":false,"streak_count":0,"time_taken_sec":2.695}}
+{"event_type":"quizStarted","timestamp":"2025-06-04T10:23:40.589Z","user_id":"unknown","properties":{"quiz_id":"q8"}}
+{"event_type":"quizSubmitted","timestamp":"2025-06-04T10:23:42.601Z","user_id":"unknown","properties":{"experiment_quiz_streak":"unknown","experiment_quiz_feedback":"unknown","quiz_id":"q8","quiz_level":10,"is_correct":false,"hint_used":false,"streak_count":0,"time_taken_sec":2.011}}
+{"event_type":"quizEnded","timestamp":"2025-06-04T10:23:55.777Z","user_id":"unknown","properties":{"quiz_id":"q8","is_completed":true}}
+{"event_type":"quizSubmitted","timestamp":"2025-06-04T10:23:55.881Z","user_id":"unknown","properties":{"experiment_quiz_streak":"unknown","experiment_quiz_feedback":"unknown","quiz_id":"q8","quiz_level":10,"is_correct":true,"hint_used":true,"streak_count":0,"time_taken_sec":15.291}}
+{"event_type":"quizStarted","timestamp":"2025-06-04T10:44:36.775Z","user_id":"unknown","properties":{"quiz_id":"q32"}}
+{"event_type":"quizSubmitted","timestamp":"2025-06-04T10:44:39.048Z","user_id":"unknown","properties":{"quiz_id":"q32","quiz_subject":"invest","quiz_rank":"BRONZE","quiz_level":10,"is_correct":false,"hint_used":false,"time_taken_sec":2}}
+{"event_type":"quizEnded","timestamp":"2025-06-04T10:44:42.796Z","user_id":"unknown","properties":{"quiz_id":"q32","is_completed":true}}
+{"event_type":"quizSubmitted","timestamp":"2025-06-04T10:44:42.830Z","user_id":"unknown","properties":{"quiz_id":"q32","quiz_subject":"invest","quiz_rank":"BRONZE","quiz_level":10,"is_correct":true,"hint_used":false,"time_taken_sec":6}}
