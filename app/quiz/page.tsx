@@ -127,7 +127,7 @@ export default function QuizPage() {
   const loadUserInfo = async () => {
     try {
       const token = Cookies.get("jwt_token");
-      const response = await fetch("http://52.78.4.114:8080/users/getUserinfo", {
+      const response = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
         credentials: "include",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -175,7 +175,7 @@ export default function QuizPage() {
     try {
       // 1) 유저 랭크
       const token = Cookies.get("jwt_token");
-      const response = await fetch("http://52.78.4.114:8080/users/getUserinfo", {
+      const response = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
         credentials: "include",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -348,7 +348,7 @@ export default function QuizPage() {
         
         // 퀴즈 제출 후 사용자 정보를 다시 가져와서 랭크 변경 확인
         try {
-          const userInfo = await fetch("http://52.78.4.114:8080/users/getUserinfo", {
+          const userInfo = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
             credentials: "include",
           }).then(r => r.json())
           

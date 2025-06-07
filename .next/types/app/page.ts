@@ -1,4 +1,4 @@
-// File: C:\Users\kimjeongsoo\Desktop\weebee\front\app\page.tsx
+// File: /Users/seungyeon/Desktop/ITStudy/weebee/frontend/app/page.tsx
 import * as entry from '../../../app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

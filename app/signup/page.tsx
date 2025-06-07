@@ -60,7 +60,7 @@ export default function SignupPage() {
       // 저장된 기본 정보로 회원가입 진행
       if (submittedBasicInfo) {
         try {
-          const response = await fetch("http://52.78.4.114:8080/users/signup", {
+          const response = await fetch("http://52.78.4.114:8085/users/signup", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -173,7 +173,7 @@ export default function SignupPage() {
       
       
       // 2. 설문조사 제출
-      const surveyResult = await callApi("http://52.78.4.114:8080/surveys", "POST", surveyData);
+      const surveyResult = await callApi("http://52.78.4.114:8085/surveys", "POST", surveyData);
       if (!surveyResult.success) {
         setError(`설문조사 제출 오류: ${surveyResult.error}`);
         return;
@@ -185,7 +185,7 @@ export default function SignupPage() {
       
       
       // 4. ML 클러스터링 API 호출
-      const mlResult = await callApi("http://52.78.4.114:8080/ml/clusteringwithKafka", "GET");
+      const mlResult = await callApi("http://52.78.4.114:8085/ml/clusteringwithKafka", "GET");
       if (!mlResult.success) {
         setError(`ML 클러스터링 오류: ${mlResult.error}`);
         return;
@@ -199,7 +199,7 @@ export default function SignupPage() {
 
       // 3. 퀴즈 배치 테스트 결과 제출 (금융 지식 스탯 정보)
       console.log('금융 지식 스탯 정보 제출:', surveyData.stats);
-      const quizPlacementResult = await callApi("http://52.78.4.114:8080/quiz/placementTest", "POST", surveyData.stats);
+      const quizPlacementResult = await callApi("http://52.78.4.114:8085/quiz/placementTest", "POST", surveyData.stats);
       if (!quizPlacementResult.success) {
         setError(`퀴즈 배치 테스트 제출 오류: ${quizPlacementResult.error}`);
         return;
@@ -208,7 +208,7 @@ export default function SignupPage() {
       
       // 스탯 정보 확인 및 필요시 초기화
       console.log('스탯 정보 확인 중...');
-      const statsCheckResult = await callApi("http://52.78.4.114:8080/stats/getuserstats", "GET");
+      const statsCheckResult = await callApi("http://52.78.4.114:8085/stats/getuserstats", "GET");
       
       if (!statsCheckResult.success) {
         // 스탯이 없는 경우
@@ -217,7 +217,7 @@ export default function SignupPage() {
       
       // 4. getUserStats API 호출하여 사용자 랭크 정보 가져오기
       console.log('getUserStats API 호출 시작...');
-      const userStatsResult = await callApi("http://52.78.4.114:8080/stats/getuserstats", "GET");
+      const userStatsResult = await callApi("http://52.78.4.114:8085/stats/getuserstats", "GET");
       
       if (!userStatsResult.success) {
         setError(`사용자 스탯 정보 조회 오류: ${userStatsResult.error}`);
