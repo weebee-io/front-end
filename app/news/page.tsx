@@ -8,7 +8,9 @@ import {
   getNews,
   getNewsById,
   checkNewsQuizAnswer,
+  getNewsExplanation,
 } from "@/lib/api"
+import { logEvent } from "@/lib/analytics"
 import {
   Card,
   CardContent,
@@ -43,6 +45,7 @@ type NewsQuiz = {
   newsquizChoiceC: string
   newsquizChoiceD: string
   newsquizCorrectAns: string
+  newsquizLevel: number    // DB 컬럼 매핑
 }
 
 // 퀴즈 결과 타입 정의
@@ -58,11 +61,12 @@ type QuizResult = {
 }
 
 export default function NewsPage() {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading, user } = useAuth()
   const [news, setNews] = useState<News[]>([])
   const [loadingNews, setLoadingNews] = useState(false)
   const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
+  const [showHint, setShowHint] = useState<{[key: number]: boolean}>({})
   
   // 랭크 승급 관련 상태
   const [prevRank, setPrevRank] = useState<string | null>(null)
@@ -74,7 +78,7 @@ export default function NewsPage() {
   // 사용자가 선택한 답
   const [answers, setAnswers] = useState<{ [id: number]: string }>({})
   
-  // 제출 완료된 퀴즈 ID 집합 - 로컬 스토리지에서 불러오기
+  // 제출 완료된 퀴즈 ID 집합
   const [completed, setCompleted] = useState<Set<number>>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('completedQuizzes')
@@ -83,7 +87,6 @@ export default function NewsPage() {
     return new Set()
   })
   
-  // completed 상태가 변경될 때마다 로컬 스토리지에 저장
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('completedQuizzes', JSON.stringify(Array.from(completed)))
@@ -117,7 +120,6 @@ export default function NewsPage() {
     }
   }, [isAuthenticated, loading, currentPage])
   
-  // 사용자 랭크 정보 로드
   const loadUserRank = async () => {
     try {
       const token = Cookies.get("jwt_token");
@@ -128,30 +130,16 @@ export default function NewsPage() {
           "Content-Type": "application/json"
         }
       });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("사용자 정보 가져오기 실패:", errorText);
-        return;
-      }
-      
       const userInfo = await response.json();
-      
-      if (!userInfo.success || !userInfo.data) {
-        console.error("사용자 정보 없음:", userInfo);
-        return;
-      }
-      
       if (userInfo.success) {
-        // 랭크 정보 저장
         setPrevRank(userInfo.data.userrank)
       }
-    } catch (error) {
-      console.error('사용자 정보 로딩 중 오류:', error)
+    } catch {
+      // 무시
     }
   }
 
-  // 뉴스 로딩
+  // 뉴스 로딩 (로그는 펼치기/접기에서만 처리)
   async function loadNews() {
     setLoadingNews(true)
     try {
@@ -168,195 +156,179 @@ export default function NewsPage() {
     }
   }
 
-  // 뉴스 펼침/접기 핸들러
+  // 1) 뉴스 펼침/접기 핸들러
   const toggleNews = async (newsItem: News) => {
-    // 이미 펼쳐진 뉴스를 접는 경우
+    // 접기
     if (newsItem.isExpanded) {
-      setNews(news.map(n => 
-        n.newsId === newsItem.newsId 
-          ? { ...n, isExpanded: false } 
+      setNews(news.map(n =>
+        n.newsId === newsItem.newsId
+          ? { ...n, isExpanded: false }
           : n
       ))
+      // 📌 로그: 뉴스 접기
+      await logEvent("newsCollapsed", { newsId: String(newsItem.newsId) })
       return
     }
-    
-    // 새로운 뉴스를 펼치는 경우
-    setNews(news.map(n => 
-      n.newsId === newsItem.newsId 
-        ? { ...n, isExpanded: true } 
+
+    // 이전 열린 글 접기
+    const prev = news.find(n => n.isExpanded)
+    if (prev) {
+      // 📌 로그: 이전 뉴스 접기
+      await logEvent("newsCollapsed", { newsId: String(prev.newsId) })
+    }
+
+    // 새로 펼치기
+    setNews(news.map(n =>
+      n.newsId === newsItem.newsId
+        ? { ...n, isExpanded: true }
         : { ...n, isExpanded: false }
     ))
-    
-    // 이미 newsQuizzes가 있으면 다시 로드할 필요 없음
-    if (!newsItem.newsQuizzes || newsItem.newsQuizzes.length === 0) {
+    // 📌 로그: 뉴스 펼치기
+    await logEvent("newsExpanded", { newsId: String(newsItem.newsId), experimentNewsLayout: "default" })
+
+    // 상세 및 퀴즈 로드
+    if (!newsItem.newsQuizzes?.length) {
       try {
-        const fullNews = await getNewsById(newsItem.newsId)
-        setNews(news.map(n => 
-          n.newsId === newsItem.newsId 
-            ? { ...n, newsQuizzes: fullNews.newsQuizzes || [], isExpanded: true } 
-            : n
-        ))
-      } catch (e) {
-        console.error("뉴스 상세 로드 실패", e)
+        const full = await getNewsById(newsItem.newsId)
+        setNews(n =>
+          n.map(x =>
+            x.newsId === newsItem.newsId
+              ? { ...x, newsQuizzes: full.newsQuizzes || [], isExpanded: true }
+              : x
+          )
+        )
+      } catch {
+        // 무시
       }
     }
   }
-  
-  // AI 해설 토글
+
+  // 2) AI 요약 토글 + 호출 시간 측정
   const toggleAiExplanation = async (newsId: number) => {
     if (showAiExplanation === newsId) {
-      // 이미 열려있으면 닫기만 함
       setShowAiExplanation(null)
       return
     }
-    
     setShowAiExplanation(newsId)
-    
-    // 이미 가져온 해설이 있는지 확인
-    if (aiExplanations[newsId]) {
-      return // 이미 데이터가 있으면 재요청 안함
-    }
-    
-    // 현재 선택된 뉴스 찾기
-    const newsItem = news.find(item => item.newsId === newsId)
-    if (!newsItem) return
-    
+    setLoadingAiExplanation(true)
+    const item = news.find(n => n.newsId === newsId)
+    if (!item) return
+
+    const start = performance.now()
     try {
-      setLoadingAiExplanation(true)
-      
-      // API 요청 데이터 준비 - 새로운 API 형식에 맞게 news 키 사용
-      const requestData = {
-        news: newsItem.description // 해당 기사의 description 필드만 사용
-      }
-      
-      // description이 없는 경우에 대한 처리
-      if (!newsItem.description || newsItem.description.trim() === '') {
-        throw new Error('뉴스 내용이 없어 AI 해설을 생성할 수 없습니다.')
-      }
-      
-      // AI 해설 API 호출 - 새로운 엔드포인트 사용
-      const response = await fetch('http://43.202.154.216:8000/api/news/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
+      const resp = await fetch("http://43.202.154.216:8000/api/news/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ news: item.description })
       })
-      
-      if (!response.ok) {
-        throw new Error('AI 해설을 가져오는데 실패했습니다.')
-      }
-      
-      const data = await response.json()
-      
-      // 응답 데이터 처리
-      setAiExplanations(prev => ({
-        ...prev,
-        [newsId]: data.summary || data.explanation || '내용을 분석할 수 없습니다.'
+      const data = await resp.json()
+      const duration = Math.round(performance.now() - start)
+
+      // 📌 로그: AI 위젯 호출
+      await logEvent("aiWidgetCalled", { 
+        newsId: String(newsId), 
+        summaryLength: item.description.length, 
+        summaryStyle: "bullet", 
+        experimentNewsLayout: "default", 
+        summaryRequestTimeMs: duration 
+      })
+
+      setAiExplanations(p => ({
+        ...p,
+        [newsId]: data.summary || data.explanation || ""
       }))
       
-    } catch (error) {
-      console.error('AI 요약 해설 요청 오류:', error)
-      // 에러 메시지 표시
-      setAiExplanations(prev => ({
-        ...prev,
-        [newsId]: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+      // 힌트 사용 여부 업데이트
+      setShowHint(p => ({
+        ...p,
+        [newsId]: true
+      }))
+    } catch (e) {
+      console.error("AI 해설 오류:", e)
+      setAiExplanations(p => ({
+        ...p,
+        [newsId]: "AI가 이 뉴스에 대한 내용을 분석하지 못했습니다. 다시 시도해주세요."
       }))
     } finally {
       setLoadingAiExplanation(false)
     }
   }
 
-  // 퀴즈 제출 핸들러
+  // 3) 뉴스 퀴즈 제출 핸들러
   const submitAnswer = async (quizId: number, answer: string) => {
     if (!answer) return
-
     try {
-      const result: QuizResult = await checkNewsQuizAnswer(quizId, answer)
-      
+      const result = await checkNewsQuizAnswer(quizId, answer)
+      setAnswers(prev => ({ ...prev, [quizId]: answer }))
+      setCompleted(prev => {
+        const newSet = new Set(prev)
+        if (result.isCorrect) {
+          newSet.add(quizId)
+        }
+        return newSet
+      })
+
       // 결과 모달 표시
       setCurrentResult({
-        quizId,
+        quizId: result.newsQuizId,
         correct: result.isCorrect,
         message: result.message,
-        points: result.isCorrect ? (result.totalPoints || result.originalPoints) : undefined
+        points: result.bonusPoints
       })
       setShowResultModal(true)
-      
+
+      // 랭크 업데이트 확인
       if (result.isCorrect) {
-        // 로컬 스토리지에 완료된 퀴즈 저장
-        const newCompleted = new Set(completed)
-        newCompleted.add(quizId)
-        setCompleted(newCompleted)
-        
-        // 퀴즈 제출 후 사용자 정보를 다시 가져와서 랭크 변경 확인
         try {
           const token = Cookies.get("jwt_token");
           const response = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
             credentials: "include",
             headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json"
+              "Authorization": `Bearer ${token}`
             }
           });
-          
-          if (!response.ok) {
-            throw new Error(`사용자 정보 가져오기 실패: ${response.status}`);
-          }
-          
-          const userInfo = await response.json()
-          
+          const userInfo = await response.json();
           if (userInfo.success) {
-            const currentRank = userInfo.data.userrank
-            
-            // 이전 랭크가 있고, 현재 랭크와 다르다면 승급한 것
+            const currentRank = userInfo.data.userrank;
             if (prevRank && prevRank !== currentRank) {
-              console.log(`랭크 승급 감지: ${prevRank} -> ${currentRank}`)
-              setNewRank(currentRank)
-              setShowConfetti(true)
-              setShowRankUpModal(true)
-              
-              // 5초 후에 폭죽 효과 중단
-              setTimeout(() => {
-                setShowConfetti(false)
-              }, 5000)
+              setNewRank(currentRank);
+              setShowConfetti(true);
+              setShowRankUpModal(true);
+              setTimeout(() => setShowConfetti(false), 5000);
+              setPrevRank(currentRank); // 랭크 업데이트 후 현재 랭크를 이전 랭크로 저장
             }
-            
-            // 현재 랭크 저장
-            setPrevRank(currentRank)
           }
         } catch (error) {
-          console.error('랭크 정보 가져오기 실패:', error)
+          console.error("랭크 정보 가져오기 실패:", error);
         }
       }
-    } catch (e: any) {
-      console.error('뉴스 퀴즈 제출 오류:', e)
       
-      // 뉴스 스탯 초기화되지 않은 경우 처리
-      let errorMessage = "제출 오류가 발생했습니다."
-      
-      // 서버에서 반환된 오류 메시지 확인
-      if (e.message && e.message.includes('500')) {
-        errorMessage = "뉴스 스탯이 초기화되지 않았습니다. 프로필에서 확인해주세요."
-      } else if (e.message) {
-        errorMessage = e.message
-      }
-      
-      // 오류 모달 표시
-      setCurrentResult({
-        quizId,
-        correct: false,
-        message: errorMessage
+      // 📌 로그: 퀴즈 제출
+      await logEvent("newsQuizClicked", { 
+        newsId: result.newsQuizId, // 해당 퀴즈가 속한 뉴스 ID가 필요할 경우
+        quizId: quizId, 
+        quizLevel: result.newsQuizLevel, 
+        isCorrect: result.isCorrect, 
+        bonusPoints: result.bonusPoints, 
+        totalPoints: result.totalPoints, 
+        originalPoints: result.originalPoints, 
+        luckStat: result.luckStat, 
+        hintUsed: !!showHint[quizId]
       })
-      setShowResultModal(true)
+
+    } catch (e) {
+      console.error("퀴즈 제출 오류:", e)
     }
+  }
+
+  const logNewsViewed = (newsItem: News) => {
+    logEvent("newsViewed", { newsId: newsItem.newsId, experimentNewsLayout: "default" })
   }
 
   if (loading || loadingNews) {
     return <div className="p-8 text-center">로딩 중...</div>
   }
   if (!isAuthenticated) return null
-
   return (
     <div className="max-w-3xl mx-auto space-y-6 py-8 px-4">
       <h1 className="text-2xl font-bold">금융 뉴스</h1>
@@ -421,96 +393,56 @@ export default function NewsPage() {
                       </a>
                     </div>
                     
-                    {/* 액션 버튼 */}
-                    <div className="flex gap-2 mt-4">
-                      <Button 
-                        onClick={() => toggleAiExplanation(newsItem.newsId)}
-                        variant="outline"
-                        className="flex-1"
-                      >
-                        {showAiExplanation === newsItem.newsId ? "AI 요약&해설 닫기" : "AI 요약&해설 보기"}
-                      </Button>
+                    {/* AI 요약/해설 */}
+                    <div className="mt-4 p-4 border rounded-md bg-gray-50">
+                      <h3 className="font-bold mb-2">AI 요약 & 해설</h3>
+                      {aiExplanations[newsItem.newsId] ? (
+                        <p className="text-sm whitespace-pre-line">{aiExplanations[newsItem.newsId]}</p>
+                      ) : loadingAiExplanation ? (
+                        <div className="text-center text-gray-500 flex items-center justify-center"><svg className="animate-spin h-5 w-5 mr-3 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> AI 분석 중...</div>
+                      ) : (
+                        <p className="text-sm text-gray-500">AI가 이 뉴스에 대한 내용을 분석하지 못했습니다. 다시 시도해주세요.</p>
+                      )}
                     </div>
+                    <Button onClick={() => toggleAiExplanation(newsItem.newsId)} variant="outline" className="mt-2">
+                      {showAiExplanation === newsItem.newsId ? "AI 요약/해설 닫기" : "AI 요약/해설 보기"}
+                    </Button>
                     
-                    {/* AI 해설 영역 */}
-                    {showAiExplanation === newsItem.newsId && (
-                      <div className="mt-4 p-4 bg-blue-50 rounded-md">
-                        <h3 className="font-semibold mb-2">AI 요약&해설</h3>
-                        {loadingAiExplanation ? (
-                          <div className="flex justify-center items-center h-20">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                          </div>
-                        ) : aiExplanations[newsItem.newsId] ? (
-                          <p className="text-gray-600 whitespace-pre-line">
-                            {aiExplanations[newsItem.newsId]}
-                          </p>
-                        ) : (
-                          <p className="text-gray-600">
-                            AI가 이 뉴스에 대한 내용을 분석하지 못했습니다. 다시 시도해주세요.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    
-                    {/* 퀴즈 섹션 */}
+                    {/* 뉴스 퀴즈 */}
                     {newsItem.newsQuizzes && newsItem.newsQuizzes.length > 0 && (
-                      <div className="mt-6">
-                        <h3 className="text-xl font-semibold mb-4">뉴스 퀴즈</h3>
-                        
-                        {newsItem.newsQuizzes.map((quiz) => {
+                      <div className="mt-6 space-y-4">
+                        <h3 className="text-md font-semibold">뉴스 퀴즈</h3>
+                        {newsItem.newsQuizzes.map(quiz => {
                           const isDone = completed.has(quiz.newsquizId);
                           return (
-                            <div key={quiz.newsquizId} className="border rounded-md p-4 mb-4">
-                              <div className="font-medium mb-3">{quiz.newsquizContent}</div>
-                              
+                            <Card key={quiz.newsquizId} className="border p-4">
+                              <p className="font-medium mb-2">{quiz.newsquizContent}</p>
                               <div className="space-y-2">
-                                {[
-                                  { value: "A", text: quiz.newsquizChoiceA },
-                                  { value: "B", text: quiz.newsquizChoiceB },
-                                  { value: "C", text: quiz.newsquizChoiceC },
-                                  { value: "D", text: quiz.newsquizChoiceD }
-                                ].map(({ value, text }) => (
-                                  <label key={value} className="block">
+                                {[quiz.newsquizChoiceA, quiz.newsquizChoiceB, quiz.newsquizChoiceC, quiz.newsquizChoiceD].map((choice, idx) => (
+                                  <label key={idx} className="block">
                                     <input
                                       type="radio"
-                                      name={`answer-${quiz.newsquizId}`}
-                                      value={value}
+                                      name={`quiz-${quiz.newsquizId}`}
+                                      value={`${idx + 1}`}
                                       disabled={isDone}
-                                      checked={answers[quiz.newsquizId] === value}
-                                      onChange={() =>
-                                        setAnswers(a => ({ ...a, [quiz.newsquizId]: value }))
-                                      }
+                                      checked={answers[quiz.newsquizId] === `${idx + 1}`}
+                                      onChange={() => setAnswers(a => ({ ...a, [quiz.newsquizId]: `${idx + 1}` })) }
                                       className="mr-2"
                                     />
-                                    {text}
+                                    {choice}
                                   </label>
                                 ))}
                               </div>
-                              
-                              <div className="mt-4">
-                                <Button
-                                  onClick={() => submitAnswer(quiz.newsquizId, answers[quiz.newsquizId])}
-                                  disabled={isDone || !answers[quiz.newsquizId]}
-                                  size="sm"
-                                >
-                                  {isDone ? "이미 푼 문제입니다" : "제출하기"}
-                                </Button>
-                                
-                                {isDone && (
-                                  <span className="ml-2 text-sm text-green-600">
-                                    ✓ 정답 완료
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                              <Button
+                                onClick={() => submitAnswer(quiz.newsquizId, answers[quiz.newsquizId])}
+                                disabled={isDone || !answers[quiz.newsquizId]}
+                                className="mt-4"
+                              >
+                                {isDone ? "제출 완료" : "제출하기"}
+                              </Button>
+                            </Card>
                           );
                         })}
-                      </div>
-                    )}
-                    
-                    {(!newsItem.newsQuizzes || newsItem.newsQuizzes.length === 0) && (
-                      <div className="mt-6 text-center py-4 text-gray-500">
-                        이 뉴스에 대한 퀴즈가 없습니다.
                       </div>
                     )}
                   </div>
@@ -545,9 +477,7 @@ export default function NewsPage() {
                   </div>
                   <h3 className="text-xl font-bold text-green-600 mb-2">정답입니다!</h3>
                   <p className="text-gray-600 mb-2">{currentResult.message}</p>
-                  {currentResult.points && (
-                    <p className="text-lg font-bold text-green-600">+{currentResult.points}점</p>
-                  )}
+                  <p className="text-lg font-bold text-green-600">+{currentResult.points || 0}점</p>
                 </>
               ) : (
                 <>
@@ -557,10 +487,10 @@ export default function NewsPage() {
                     </svg>
                   </div>
                   <h3 className="text-xl font-bold text-red-600 mb-2">오답입니다!</h3>
-                  <p className="text-gray-600">{currentResult.message}</p>
+                  <p className="text-gray-600 mb-3">{currentResult.message}</p>
+                  <p className="text-lg font-bold text-red-600">-10점</p>
                 </>
               )}
-              
               <button 
                 onClick={() => setShowResultModal(false)}
                 className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"

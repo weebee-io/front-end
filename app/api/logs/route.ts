@@ -3,54 +3,87 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { z } from "zod";
 
-type LogRequestBody = {
-  event_type: string;
-  timestamp: string;
-  user_id: number;
-  properties: { [key: string]: any };
-};
+// 이벤트 타입 정의
+const EventType = z.enum([
+  "newsViewed",
+  "newsSummaryClicked",
+  "newsQuizClicked",
+  "quizStarted",
+  "quizEnded",
+  "quizSubmitted",
+  "aiWidgetCalled",
+  "chatPopupToggled",
+  "chatMessageSent",
+  "chatMessageError",
+  "quizTabViewed",
+  "quizHintRequested"
+]);
+
+// 이벤트 속성 스키마
+const EventProperties = z.object({
+  newsId: z.number().optional(),
+  quizId: z.number().optional(),
+  isCorrect: z.boolean().optional(),
+  responseTimeMs: z.number().optional(),
+  aiBotUsed: z.boolean().optional(),
+  streakCount: z.number().optional(),
+  isOpen: z.boolean().optional(),
+  messageCount: z.number().optional(),
+  messageLength: z.number().optional(),
+  error: z.string().optional()
+});
+
+// 로그 요청 스키마
+const LogRequestSchema = z.object({
+  eventType: EventType,
+  timestamp: z.string(),
+  userId: z.string(),
+  properties: EventProperties
+});
 
 export async function POST(req: NextRequest) {
   try {
-    // 1) 요청 바디(JSON)를 파싱
-    const body = (await req.json()) as LogRequestBody;
-    const { event_type, timestamp, user_id, properties } = body;
+    const body = await req.json();
+    console.log("Received log request body:", body);
 
-    // 2) 간단한 유효성 검사
-    if (
-      typeof event_type !== "string" ||
-      typeof timestamp !== "string" ||
-      typeof user_id !== "number" ||
-      typeof properties !== "object"
-    ) {
-      return NextResponse.json(
-        { success: false, error: "잘못된 요청 형식입니다." },
-        { status: 400 }
-      );
-    }
+    // 요청 데이터 검증
+    const validatedData = LogRequestSchema.parse(body);
 
-    // 3) logs 디렉토리 경로 구하기 (프로젝트 루트 기준)
+    // logs 디렉토리 경로 구하기 (프로젝트 루트 기준)
     const logsDir = path.join(process.cwd(), "logs");
     if (!fs.existsSync(logsDir)) {
       fs.mkdirSync(logsDir);
     }
 
-    // 4) 최종 로그 파일 경로 (quiz.log)
+    // 최종 로그 파일 경로 (quiz.log)
     const logFilePath = path.join(logsDir, "quiz.log");
 
-    // 5) 기록할 JSON 한 줄 생성
-    const logObject = { event_type, timestamp, user_id, properties };
+    // 기록할 JSON 한 줄 생성
+    const logObject = {
+      eventType: validatedData.eventType,
+      timestamp: validatedData.timestamp,
+      userId: validatedData.userId,
+      properties: validatedData.properties
+    };
     const logLine = JSON.stringify(logObject) + "\n";
 
-    // 6) 파일에 append 방식으로 기록
+    // 파일에 append 방식으로 기록
     fs.appendFileSync(logFilePath, logLine, "utf8");
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    console.error("로그 기록 중 오류:", err);
+  } catch (error) {
+    console.error("Error processing log:", error);
+    if (error instanceof z.ZodError) {
+      console.error("Validation errors:", error.errors.map(e => e.message));
+      return NextResponse.json(
+        { error: "Invalid request data", details: error.errors },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
-      { success: false, error: err.message || "Unknown Error" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

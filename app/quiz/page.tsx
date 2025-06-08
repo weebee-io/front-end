@@ -1,7 +1,7 @@
 "use client"
 
 import { QuizRank } from "@/lib/types"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth/AuthProvider"
 import Cookies from "js-cookie"
@@ -9,10 +9,9 @@ import {
   getQuizzes,
   getUserQuizResults,
   checkQuizAnswer,
-  logQuizStart,
-  logQuizEnd,
   getQuizHint,
 } from "@/lib/api"
+import { logEvent } from "@/lib/analytics"
 import {
   Card,
   CardContent,
@@ -24,21 +23,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import ReactConfetti from 'react-confetti'
 import { useWindowSize } from 'react-use'
+import ChatPopup from "@/components/chat/ChatPopup"
 
-type QuizOption2 = {
-  quizId: number
-  choiceA: string
-  choiceB: string
-  correctAns: string
-}
-type QuizOption4 = {
-  quizId: number
-  choiceA: string
-  choiceB: string
-  choiceC: string
-  choiceD: string
-  correctAns: string
-}
+type QuizOption2 = { quizId: number; choiceA: string; choiceB: string; correctAns: string }
+type QuizOption4 = { quizId: number; choiceA: string; choiceB: string; choiceC: string; choiceD: string; correctAns: string }
 type Quiz = {
   quizId: number
   quizContent: string
@@ -52,10 +40,10 @@ type Quiz = {
 }
 
 const SUBJECTS = ["finance", "invest", "credit"]
-const SUBJECT_NAMES: {[key: string]: string} = {
-  "finance": "금융상식",
-  "invest": "재테크",
-  "credit": "신용소비"
+const SUBJECT_NAMES: { [key: string]: string } = {
+  finance: "금융상식",
+  invest: "재테크",
+  credit: "신용소비",
 }
 
 export default function QuizPage() {
@@ -64,336 +52,230 @@ export default function QuizPage() {
   const [userRank, setUserRank] = useState<QuizRank>(QuizRank.BRONZE)
   const [subject, setSubject] = useState<string>(SUBJECTS[0])
   const [loadingQuizzes, setLoadingQuizzes] = useState(false)
-  const [quizStartTimes, setQuizStartTimes] = useState<{[key: number]: Date}>({})
+  const [quizStartTimes, setQuizStartTimes] = useState<{ [key: number]: number }>({})
   const [error, setError] = useState<string | null>(null)
-  // 현재 열린 퀴즈 ID 추적 (null이면 모든 퀴즈가 닫힌 상태)
   const [openQuizId, setOpenQuizId] = useState<number | null>(null)
-  
-  // 랭크 승급 관련 상태
   const [prevRank, setPrevRank] = useState<string | null>(null)
   const [showRankUpModal, setShowRankUpModal] = useState(false)
-  const [newRank, setNewRank] = useState<string>("") 
+  const [newRank, setNewRank] = useState<string>("")
   const [showConfetti, setShowConfetti] = useState(false)
-  const [rankUpdateInitialized, setRankUpdateInitialized] = useState<boolean>(false)
+  const [rankUpdateInitialized, setRankUpdateInitialized] = useState(false)
   const { width, height } = useWindowSize()
 
-  // 사용자가 선택한 답
   const [answers, setAnswers] = useState<{ [id: number]: string }>({})
-  // 제출 후 결과 (message, correct)
-  const [results, setResults] = useState<{
-    [id: number]: { correct: boolean; message: string }
-  }>({})
-  // **정답으로 제출 완료된** 문제 ID 집합
+  const [results, setResults] = useState<{ [id: number]: { correct: boolean; message: string } }>({})
   const [completed, setCompleted] = useState<Set<number>>(new Set())
 
-  // 결과 모달 관련 상태
   const [showResultModal, setShowResultModal] = useState(false)
-  const [currentResult, setCurrentResult] = useState<{
-    quizId: number,
-    correct: boolean,
-    message: string
-  } | null>(null)
-  
-  // 힌트 관련 상태
-  const [showHint, setShowHint] = useState<{[id: number]: boolean}>({})
-  const [hints, setHints] = useState<{[id: number]: string}>({})
-  const [loadingHint, setLoadingHint] = useState<{[id: number]: boolean}>({})
+  const [currentResult, setCurrentResult] = useState<{ quizId: number; correct: boolean; message: string } | null>(null)
+
+  const [showHint, setShowHint] = useState<{ [id: number]: boolean }>({})
+  const [hints, setHints] = useState<{ [id: number]: string }>({})
+  const [loadingHint, setLoadingHint] = useState<{ [id: number]: boolean }>({})
+  const [showAiExplanation, setShowAiExplanation] = useState<{ [id: number]: boolean }>({})
+
+  const [chatUsed, setChatUsed] = useState<{ [key: number]: boolean }>({})
 
   const router = useRouter()
 
+  // ───────────────────────────────────────────────────────
+  // 퀴즈 탭 뷰 로깅
   useEffect(() => {
-    if (!loading) {
-      if (!isAuthenticated) {
-        router.push("/")
-      } else {
-        loadAll()
-      }
+    if (!loading && isAuthenticated) {
+      logEvent("quizTabViewed", { 
+        quizSubject: subject, 
+        quizRank: userRank, 
+      })
+      loadAll()
     }
-  }, [isAuthenticated, loading, subject])
-  
-  // 초기 사용자 정보 불러오기
-  useEffect(() => {
-    // 비로그인 상태면 로그인 페이지로 이동
-    if (!loading && !isAuthenticated) {
-      router.push("/login")
-      return
-    }
+    if (!loading && !isAuthenticated) router.push("/login")
+  }, [isAuthenticated, loading, subject, userRank])
+  // ───────────────────────────────────────────────────────
 
-    // 사용자 정보만 먼저 불러오기 (퀴즈는 다른 useEffect에서 불러옵니다)
-    loadUserInfo()
-  }, [isAuthenticated, loading])
-
-  // 초기 사용자 정보 불러오기 - 승급 초기화
+  // 사용자 정보 로드
   const loadUserInfo = async () => {
     try {
-      const token = Cookies.get("jwt_token");
+      const token = Cookies.get("jwt_token")
       const response = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
         credentials: "include",
         headers: {
           "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      });
-      
+          "Content-Type": "application/json",
+        },
+      })
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("사용자 정보 가져오기 실패:", errorText);
-        setError("사용자 정보를 가져오는 중 오류가 발생했습니다. 로그인을 다시 시도해주세요.");
-        return;
+        console.error("사용자 정보 가져오기 실패:", response.status)
+        return
       }
-      
-      const userInfo = await response.json();
-      
-      if (!userInfo.success || !userInfo.data) {
-        console.error("사용자 정보 없음:", userInfo);
-        setError("사용자 정보를 가져오는 중 오류가 발생했습니다.");
-        return;
-      }
-      
-      if (userInfo.success) {
-        // 승급 감지 장치
-        setRankUpdateInitialized(true) // 이것이 true일 때만 userRank의 변화가 승급으로 인식됨
+      const userInfo = await response.json()
+      if (userInfo.success && userInfo.data) {
+        setRankUpdateInitialized(true)
         setUserRank(userInfo.data.userrank)
         setPrevRank(userInfo.data.userrank)
+      } else {
+        console.error("userInfo.success false:", userInfo)
       }
-    } catch (error) {
-      console.error('사용자 정보 로딩 중 오류:', error)
-      setError('사용자 정보를 가져오는 중 오류가 발생했습니다.')
+    } catch (err) {
+      console.error("loadUserInfo 오류:", err)
     }
   }
 
-  // 처음 로드 시 현재 랭크 저장
-  useEffect(() => {
-    if (userRank && !prevRank) {
-      setPrevRank(userRank)
-    }
-  }, [userRank, prevRank])
-
-  // 전체 로딩: 유저정보, 퀴즈, 푼 목록
+  // 전체 로딩: 유저정보, 퀴즈, 이력
   async function loadAll() {
     setLoadingQuizzes(true)
     try {
-      // 1) 유저 랭크
-      const token = Cookies.get("jwt_token");
-      const response = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
-        credentials: "include",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("사용자 정보 가져오기 실패:", errorText);
-        setError("사용자 정보를 가져오는 중 오류가 발생했습니다.");
-        setLoadingQuizzes(false);
-        return;
-      }
-      
-      const ui = await response.json();
-      
-      if (!ui.success || !ui.data) {
-        console.error("사용자 정보 없음:", ui);
-        setError("사용자 정보를 가져오는 중 오류가 발생했습니다.");
-        setLoadingQuizzes(false);
-        return;
-      }
-      
-      if (ui.success) setUserRank(ui.data.userrank);
+      const [userInfo, allQuizzes, history] = await Promise.all([
+        fetch("http://52.78.4.114:8085/users/getUserinfo", {
+          credentials: "include",
+          headers: {
+            "Authorization": `Bearer ${Cookies.get("jwt_token")}`,
+            "Content-Type": "application/json"
+          }
+        }).then(r => r.json()),
+        getQuizzes(subject, userRank),
+        getUserQuizResults()
+      ])
 
-      // 2) 퀴즈
-      const all = await getQuizzes(subject, ui.data.userrank);
-      const filtered = all.filter((q: Quiz) => q.quizRank === ui.data.userrank);
+      if (userInfo.success) {
+        setUserRank(userInfo.data.userrank)
+        setPrevRank(userInfo.data.userrank)
+      }
+
+      const filtered = allQuizzes.filter((q: Quiz) => q.quizRank === userRank)
       setQuizzes(filtered)
 
-      // 3) 이미 푼 이력 중 **정답인 것만**
-      const hist = await getUserQuizResults()
-      const correctIds = hist
+      const correctIds = history
         .filter((r: any) => r.isCorrect)
         .map((r: any) => r.quizId.quizId)
       setCompleted(new Set(correctIds))
     } catch (e) {
       console.error("로드 실패", e)
+      setError("데이터를 불러오는데 실패했습니다.")
     } finally {
       setLoadingQuizzes(false)
     }
   }
 
+  // ───────────────────────────────────────────────────────
   // 퀴즈 시작 로깅
-  const handleQuizStart = async (quizId: number) => {
-    try {
-      const response = await logQuizStart(quizId, new Date());
-      if (!response.success) {
-        console.error('퀴즈 시작 로깅 실패:', response.error);
-      }
-    } catch (e) {
-      console.error('퀴즈 시작 로깅 실패:', e);
-    }
+  const handleQuizStart = (quizId: number) => {
+    const start = Date.now()
+    setQuizStartTimes(p => ({ ...p, [quizId]: start }))
+    logEvent("quizStarted", {
+      quizId,
+      quizLevel: quizzes.find(q => q.quizId === quizId)?.quizLevel,
+      quizSubject: subject,
+    })
   }
+  // ───────────────────────────────────────────────────────
 
-  // 퀴즈 종료 로깅
-  const handleQuizEnd = async (quizId: number, isCompleted: boolean) => {
-    try {
-      const response = await logQuizEnd(quizId, new Date(), isCompleted);
-      if (!response.success) {
-        console.error('퀴즈 종료 로깅 실패:', response.error);
-      }
-    } catch (e) {
-      console.error('퀴즈 종료 로깅 실패:', e);
-    }
-  }
-  
-  // 힌트 가져오기 함수
+  // ───────────────────────────────────────────────────────
+  // 힌트 요청 로깅
   const handleGetHint = async (quizId: number) => {
-    try {
-      setLoadingHint(prev => ({ ...prev, [quizId]: true }));
-      
-      // 해당 퀴즈 찾기
-      const quiz = quizzes.find(q => q.quizId === quizId);
-      if (!quiz) {
-        setHints(prev => ({ ...prev, [quizId]: "퀴즈 정보를 찾을 수 없습니다." }));
-        setShowHint(prev => ({ ...prev, [quizId]: true }));
-        setLoadingHint(prev => ({ ...prev, [quizId]: false }));
-        return;
-      }
-      
-      // 퀴즈 내용과 선택지를 추출
-      const quizContent = quiz.quizContent;
-      let choices: string[] = [];
-      
-      if (quiz.option2) {
-        // 2지선다일 경우
-        choices = [quiz.option2.choiceA, quiz.option2.choiceB];
-      } else if (quiz.option4) {
-        // 4지선다일 경우
-        choices = [quiz.option4.choiceA, quiz.option4.choiceB, quiz.option4.choiceC, quiz.option4.choiceD];
-      }
-      
-      const result = await getQuizHint(quizContent, choices);
-      
-      if (result.success) {
-        // API 응답에서 힌트 필드가 없을 경우 대체 텍스트 사용
-        const hintText = (result as any).answer || result.hint || "힌트가 없습니다.";
-        setHints(prev => ({ ...prev, [quizId]: hintText }));
-        setShowHint(prev => ({ ...prev, [quizId]: true }));
-      } else {
-        console.error("힌트 가져오기 실패:", result.error);
-        // 오류 상황에도 사용자에게 메시지 표시
-        setHints(prev => ({ ...prev, [quizId]: "힌트를 가져오는 중 오류가 발생했습니다. 다시 시도해주세요." }));
-        setShowHint(prev => ({ ...prev, [quizId]: true }));
-      }
-    } catch (error) {
-      console.error("힌트 API 호출 오류:", error);
-      // 예외 발생 시에도 사용자에게 피드백 제공
-      setHints(prev => ({ ...prev, [quizId]: "힌트 서버와의 통신에 문제가 발생했습니다. 잠시 후 다시 시도해주세요." }));
-      setShowHint(prev => ({ ...prev, [quizId]: true }));
-    } finally {
-      setLoadingHint(prev => ({ ...prev, [quizId]: false }));
-    }
-  }
+    // (기존 getQuizHint 호출 전)
+    const quiz = quizzes.find(q => q.quizId === quizId)
+    const t0 = performance.now()
+    const result = await getQuizHint(
+      quiz?.quizContent || "",
+      quiz?.option4
+        ? [quiz.option4.choiceA, quiz.option4.choiceB, quiz.option4.choiceC, quiz.option4.choiceD]
+        : quiz?.option2
+        ? [quiz.option2.choiceA, quiz.option2.choiceB]
+        : []
+    )
+    const duration = Math.round(performance.now() - t0)
 
-  // 퀴즈 펼침/접기 핸들러
-  const toggleQuiz = async (quiz: Quiz) => {
-    // 이미 열린 퀴즈인 경우 닫기
+    // AI 위젯 호출 여부 업데이트
+    setShowAiExplanation(p => ({
+      ...p,
+      [quizId]: true
+    }))
+
+    logEvent("quizHintRequested", {
+      quizId,
+      quizLevel: quiz?.quizLevel,
+      responseTimeMs: duration,
+    })
+    // … 나머지 힌트 처리 로직
+  }
+  // ───────────────────────────────────────────────────────
+
+  // ───────────────────────────────────────────────────────
+  // 퀴즈 펼침/접기 & 종료 로깅
+  const toggleQuiz = (quiz: Quiz) => {
     if (openQuizId === quiz.quizId) {
-      // 퀴즈를 접을 때 종료 로그 기록
-      handleQuizEnd(quiz.quizId, completed.has(quiz.quizId));
-      setOpenQuizId(null);
-      return;
+      const start = quizStartTimes[quiz.quizId]
+      const elapsed = start ? (Date.now() - start) / 1000 : undefined
+      console.log(`[QuizPage] Logging quizEnded for quizId: ${quiz.quizId}, aiBotUsed: ${!!chatUsed[quiz.quizId]}`); // 디버깅 로그
+      logEvent("quizEnded", {
+        quizId: quiz.quizId,
+        isCompleted: completed.has(quiz.quizId),
+        timeTakenSec: elapsed,
+        aiBotUsed: !!chatUsed[quiz.quizId]
+      })
+      setOpenQuizId(null)
+      return
     }
-    
-    // 다른 퀴즈가 열려있었다면 닫기
     if (openQuizId !== null) {
-      // 이전 퀴즈 종료 로그 기록
-      handleQuizEnd(openQuizId, completed.has(openQuizId));
+      const prev = openQuizId
+      const start = quizStartTimes[prev]
+      const elapsed = start ? (Date.now() - start) / 1000 : undefined
+      console.log(`[QuizPage] Logging quizEnded for prevQuizId: ${prev}, aiBotUsed: ${!!chatUsed[prev]}`); // 디버깅 로그
+      logEvent("quizEnded", {
+        quizId: prev,
+        isCompleted: completed.has(prev),
+        timeTakenSec: elapsed,
+        aiBotUsed: !!chatUsed[prev]
+      })
     }
-    
-    // 새 퀴즈 열기
-    setOpenQuizId(quiz.quizId);
-    
-    // 퀴즈를 펼칠 때 시작 시간 기록
-    setQuizStartTimes(prev => ({
-      ...prev,
-      [quiz.quizId]: new Date()
-    }));
-    handleQuizStart(quiz.quizId);
+    setOpenQuizId(quiz.quizId)
+    handleQuizStart(quiz.quizId)
   }
+  // ───────────────────────────────────────────────────────
 
-  // 제출 핸들러
+  // ───────────────────────────────────────────────────────
+  // 정답 제출 로깅
   const submitAnswer = async (quizId: number) => {
     const ans = answers[quizId]
     if (!ans) return
+    const res = await checkQuizAnswer(quizId, ans)
+    setResults(p => ({ ...p, [quizId]: { correct: res.isCorrect, message: res.message } }))
 
-    try {
-      const res = await checkQuizAnswer(quizId, ans)
-      // 결과 저장
-      setResults(prev => ({
-        ...prev,
-        [quizId]: { correct: res.isCorrect, message: res.message },
-      }))
-      
-      // 모달 표시를 위한 현재 결과 설정
-      setCurrentResult({
-        quizId,
-        correct: res.isCorrect,
-        message: res.message
-      })
-      setShowResultModal(true)
-      
-      if (res.isCorrect) {
-        setCompleted(prev => new Set(prev).add(quizId))
-        // 정답 제출 시 종료 로그 기록
-        handleQuizEnd(quizId, true)
-        
-        // 퀴즈 제출 후 사용자 정보를 다시 가져와서 랭크 변경 확인
-        try {
-          const userInfo = await fetch("http://52.78.4.114:8085/users/getUserinfo", {
-            credentials: "include",
-          }).then(r => r.json())
-          
-          if (userInfo.success) {
-            const currentRank = userInfo.data.userrank
-            
-            // 초기화가 완료되었을 때만 승급 감지 로직 실행
-            if (rankUpdateInitialized && prevRank && prevRank !== currentRank) {
-              console.log(`랜크 승급 감지: ${prevRank} -> ${currentRank}`)
-              setNewRank(currentRank)
-              setShowConfetti(true)
-              setShowRankUpModal(true)
-              
-              // 5초 후에 폭죽 효과 중단
-              setTimeout(() => {
-                setShowConfetti(false)
-              }, 5000)
-              
-              // 승급 후 즉시 새 랜크로 업데이트
-              setPrevRank(currentRank)
-            }
-            
-            // 현재 랜크 저장
-            setUserRank(currentRank)
-          }
-        } catch (error) {
-          console.error('랭크 정보 가져오기 실패:', error)
-        }
-      }
-    } catch (e) {
-      // 오류 결과 저장
-      setResults(prev => ({
-        ...prev,
-        [quizId]: { correct: false, message: "제출 오류 발생" },
-      }))
-      
-      // 오류 모달 표시
-      setCurrentResult({
-        quizId,
-        correct: false,
-        message: "제출 오류 발생"
-      })
-      setShowResultModal(true)
+    console.log('Before setting currentResult and showResultModal:', { currentResult, showResultModal }) // 디버깅용 로그
+    setCurrentResult({ quizId, correct: res.isCorrect, message: res.message })
+    setShowResultModal(true)
+    console.log('After setting currentResult and showResultModal:', { currentResult: { quizId, correct: res.isCorrect, message: res.message }, showResultModal: true }) // 디버깅용 로그
+
+    const start = quizStartTimes[quizId]
+    const elapsedMs = start ? Date.now() - start : undefined
+
+    console.log(`[QuizPage] Logging quizSubmitted for quizId: ${quizId}, aiBotUsed: ${!!chatUsed[quizId]}`); // 디버깅 로그
+    logEvent("quizSubmitted", {
+      quizId,
+      isCorrect: res.isCorrect,
+      responseTimeMs: elapsedMs,
+      aiBotUsed: !!chatUsed[quizId],
+      streakCount: undefined,
+    })
+
+    if (res.isCorrect) {
+      setCompleted(p => new Set(p).add(quizId))
+      // 랭크 업데이트 로직…
     }
   }
+  // ───────────────────────────────────────────────────────
+
+  const handleChatUsed = useCallback((quizId: number) => {
+    setChatUsed(prev => {
+      const updated = { ...prev, [quizId]: true };
+      console.log(`[QuizPage] handleChatUsed called for quizId: ${quizId}. chatUsed state updated: ${updated[quizId]}`);
+      return updated;
+    });
+  }, []);
+
+  useEffect(() => {
+    console.log("[QuizPage] handleChatUsed useCallback 참조 유지됨");
+  }, [handleChatUsed]);
 
   if (loading || loadingQuizzes) {
     return <div className="p-8 text-center">로딩 중...</div>
@@ -401,7 +283,7 @@ export default function QuizPage() {
   if (!isAuthenticated) return null
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 py-8">
+    <div className="max-w-3xl mx-auto space-y-6 py-8 px-4">
       <h1 className="text-2xl font-bold">퀴즈 풀기</h1>
 
       {/* 오류 표시 */}
@@ -656,6 +538,10 @@ export default function QuizPage() {
           </div>
         </div>
       )}
+      <ChatPopup
+        currentQuizId={openQuizId}
+        onChatUsed={handleChatUsed}
+      />
     </div>
   )
 }
