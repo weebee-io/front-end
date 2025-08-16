@@ -6,8 +6,6 @@
 
 ## 📂 프로젝트 구조
 
-> **추후 변경 시 이 섹션을 업데이트하세요.**
-
 ```bash
 weebee-frontend/
 ├── app/                       # Next.js App Router (페이지별 라우트)
@@ -46,24 +44,6 @@ weebee-frontend/
 
 ---
 
-## 🚀 실행 방법 (로컬 개발)
-
-```bash
-# 1. 의존성 설치
-yarn install
-
-# 2. 개발 서버 실행
-yarn dev            # http://localhost:3000
-```
-
-프로덕션 빌드 & 실행:
-
-```bash
-yarn build          # .next/ 생성
-yarn start          # NODE_ENV=production, 기본 PORT=3000
-```
-
----
 
 ## 📊 사용 기술
 
@@ -79,16 +59,6 @@ yarn start          # NODE_ENV=production, 기본 PORT=3000
 
 ---
 
-## 🧪 테스트
-
-```bash
-yarn test
-```
-
-> **CI** 구축 시 PR 생성 시점에 자동 실행될 예정입니다.
-
----
-
 ## 📁 데이터 & API
 
 - 백엔드 **FastAPI** 서비스에서 `/predict`, `/quiz` 등 엔드포인트 호출  
@@ -97,15 +67,6 @@ yarn test
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
-
----
-
-## 🛠 향후 개선 계획
-
-- [ ] **i18n**(국/영) 다국어 지원
-- [ ] 접근성(A11y) 감사 자동화
-- [ ] 실시간 소켓 기반 퀴즈 랭킹보드
-- [ ] Lighthouse 기준 성능 90⁺ 유지
 
 ---
 
